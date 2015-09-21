@@ -5,10 +5,10 @@
 // 
 /**\class HFanalyzer HFanalyzer.cc UserCode/HFanalyzer/src/HFanalyzer.cc
 
- Description: [one line class summary]
+   Description: [one line class summary]
 
- Implementation:
-     [Notes on implementation]
+   Implementation:
+   [Notes on implementation]
 */
 //
 // Original Authors:  Jay Dittmann, Nadja Strobbe, Joe Pastika
@@ -54,15 +54,6 @@
 #include "CalibFormats/HcalObjects/interface/HcalCalibrations.h"
 #include "CalibFormats/HcalObjects/interface/HcalCoderDb.h"
 
-#include "TBDataFormats/HcalTBObjects/interface/HcalTBTriggerData.h"
-#include "TBDataFormats/HcalTBObjects/interface/HcalTBBeamCounters.h"
-#include "TBDataFormats/HcalTBObjects/interface/HcalTBEventPosition.h"
-#include "TBDataFormats/HcalTBObjects/interface/HcalTBParticleId.h"
-#include "TBDataFormats/HcalTBObjects/interface/HcalTBTiming.h"
-
-#include "RecoTBCalo/HcalTBObjectUnpacker/interface/HcalTBTriggerDataUnpacker.h"
-#include "RecoTBCalo/HcalTBObjectUnpacker/interface/HcalTBSlowDataUnpacker.h"
-
 #include "HFcommissioning/Analysis/interface/ADC_Conversion.h"
 
 #include "TH1D.h"
@@ -84,34 +75,81 @@ using namespace std;
 #define NUMTS 50
 #define NUMCHSTS NUMCHS*NUMTS
 
-#define NUMADCS 128
+#define NUMADCS 256
 
 // NEEDS UPDATING
 double adc2fC_QIE10[NUMADCS]={
-    -0.5,0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5,9.5, 10.5,11.5,12.5,
-    13.5,15.,17.,19.,21.,23.,25.,27.,29.5,32.5,35.5,38.5,42.,46.,50.,54.5,59.5,
-    64.5,59.5,64.5,69.5,74.5,79.5,84.5,89.5,94.5,99.5,104.5,109.5,114.5,119.5,
-    124.5,129.5,137.,147.,157.,167.,177.,187.,197.,209.5,224.5,239.5,254.5,272.,
-    292.,312.,334.5,359.5,384.5,359.5,384.5,409.5,434.5,459.5,484.5,509.5,534.5,
-    559.5,584.5,609.5,634.5,659.5,684.5,709.5,747.,797.,847.,897.,947.,997.,
-    1047.,1109.5,1184.5,1259.5,1334.5,1422.,1522.,1622.,1734.5,1859.5,1984.5,
-    1859.5,1984.5,2109.5,2234.5,2359.5,2484.5,2609.5,2734.5,2859.5,2984.5,
-    3109.5,3234.5,3359.5,3484.5,3609.5,3797.,4047.,4297.,4547.,4797.,5047.,
-    5297.,5609.5,5984.5,6359.5,6734.5,7172.,7672.,8172.,8734.5,9359.5,9984.5};
+  // - - - - - - - range 0 - - - - - - - -
+  //subrange0 
+  1.58, 4.73, 7.88, 11.0, 14.2, 17.3, 20.5, 23.6, 
+  26.8, 29.9, 33.1, 36.2, 39.4, 42.5, 45.7, 48.8,
+  //subrange1
+  53.6, 60.1, 66.6, 73.0, 79.5, 86.0, 92.5, 98.9,
+  105, 112, 118, 125, 131, 138, 144, 151,
+  //subrange2
+  157, 164, 170, 177, 186, 199, 212, 225,
+  238, 251, 264, 277, 289, 302, 315, 328,
+  //subrange3
+  341, 354, 367, 380, 393, 406, 418, 431,
+  444, 464, 490, 516, 542, 568, 594, 620,
+
+  // - - - - - - - range 1 - - - - - - - -
+  //subrange0
+  569, 594, 619, 645, 670, 695, 720, 745,
+  771, 796, 821, 846, 871, 897, 922, 947,
+  //subrange1
+  960, 1010, 1060, 1120, 1170, 1220, 1270, 1320,
+  1370, 1430, 1480, 1530, 1580, 1630, 1690, 1740,
+  //subrange2
+  1790, 1840, 1890, 1940,  2020, 2120, 2230, 2330,
+  2430, 2540, 2640, 2740, 2850, 2950, 3050, 3150,
+  //subrange3
+  3260, 3360, 3460, 3570, 3670, 3770, 3880, 3980,
+  4080, 4240, 4450, 4650, 4860, 5070, 5280, 5490,
+  
+  // - - - - - - - range 2 - - - - - - - - 
+  //subrange0
+  5080, 5280, 5480, 5680, 5880, 6080, 6280, 6480,
+  6680, 6890, 7090, 7290, 7490, 7690, 7890, 8090,
+  //subrange1
+  8400, 8810, 9220, 9630, 10000, 10400, 10900, 11300,
+  11700, 12100, 12500, 12900, 13300, 13700, 14100, 14500,
+  //subrange2
+  15000, 15400, 15800, 16200, 16800, 17600, 18400, 19300,
+  20100, 20900, 21700, 22500, 23400, 24200, 25000, 25800,
+  //subrange3
+  26600, 27500, 28300, 29100, 29900, 30700, 31600, 32400,
+  33200, 34400, 36100, 37700, 39400, 41000, 42700, 44300,
+
+  // - - - - - - - range 3 - - - - - - - - -
+  //subrange0
+  41100, 42700, 44300, 45900, 47600, 49200, 50800, 52500,
+  54100, 55700, 57400, 59000, 60600, 62200, 63900, 65500,
+  //subrange1
+  68000, 71300, 74700, 78000, 81400, 84700, 88000, 91400,
+  94700, 98100, 101000, 105000, 108000, 111000, 115000, 118000,
+  //subrange2
+  121000, 125000, 128000, 131000, 137000, 145000, 152000, 160000,
+  168000, 176000, 183000, 191000, 199000, 206000, 214000, 222000,
+  //subrange3
+  230000, 237000, 245000, 253000, 261000, 268000, 276000, 284000,
+  291000, 302000, 316000, 329000, 343000, 356000, 370000, 384000
+
+};
 
 struct TQIE10Info
 {
-    int numChs;
-    int numTS;
-    int iphi[NUMCHS];
-    int ieta[NUMCHS];
-    int depth[NUMCHS];
-    double pulse[NUMCHS][NUMTS];
-    double ped[NUMCHS];
-    double pulse_adc[NUMCHS][NUMTS];
-    double ped_adc[NUMCHS];
-    bool link_error[NUMCHS];
-    bool soi[NUMCHS][NUMTS];
+  int numChs;
+  int numTS;
+  int iphi[NUMCHS];
+  int ieta[NUMCHS];
+  int depth[NUMCHS];
+  double pulse[NUMCHS][NUMTS];
+  double ped[NUMCHS];
+  double pulse_adc[NUMCHS][NUMTS];
+  double ped_adc[NUMCHS];
+  bool link_error[NUMCHS];
+  bool soi[NUMCHS][NUMTS];
 };
 
 
@@ -120,35 +158,43 @@ struct TQIE10Info
 //
 
 class HFanalyzer : public edm::EDAnalyzer {
-   public:
-      explicit HFanalyzer(const edm::ParameterSet&);
-      ~HFanalyzer();
+public:
+  explicit HFanalyzer(const edm::ParameterSet&);
+  ~HFanalyzer();
 
-      static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
-   private:
-      virtual void beginJob() ;
-      virtual void analyze(const edm::Event&, const edm::EventSetup&);
-      void getData(const edm::Event&, const edm::EventSetup&);
-      virtual void endJob() ;
+private:
+  virtual void beginJob() ;
+  virtual void analyze(const edm::Event&, const edm::EventSetup&);
+  void getData(const edm::Event&, const edm::EventSetup&);
+  virtual void endJob() ;
 
-        TFile *_file;
-        TTree *_treeQIE10;
+  TFile *_file;
+  TTree *_treeQIE10;
 
-        string _outFileName;
-        int _verbosity;
+  vector<TH1F*> ADCspectrum;
+  vector<TH1F*> Qspectrum;
+  vector<TH1F*> TDCspectrum;
+  vector<TH2F*> Qpulse;
+  vector<TH2F*> Pulse;
+  vector<TH2F*> TDCvsBX;
 
-        TQIE10Info _qie10Info;
+  int numChannels;
+  string _outFileName;
+  int _verbosity;
 
+  TQIE10Info _qie10Info;
 
-      virtual void beginRun(edm::Run const&, edm::EventSetup const&);
-      virtual void endRun(edm::Run const&, edm::EventSetup const&);
-      virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
-      virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
+  virtual void beginRun(edm::Run const&, edm::EventSetup const&);
+  virtual void endRun(edm::Run const&, edm::EventSetup const&);
+  virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
+  virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
 
-      edm::EDGetTokenT<HcalDataFrameContainer<QIE10DataFrame> > tok_QIE10DigiCollection_;
-
-      // ----------member data ---------------------------
+  edm::EDGetTokenT<HcalDataFrameContainer<QIE10DataFrame> > tok_QIE10DigiCollection_;
+  edm::Handle<QIE10DigiCollection> qie10DigiCollection;
+  
+  // ----------member data ---------------------------
 };
 
 //
@@ -163,152 +209,201 @@ class HFanalyzer : public edm::EDAnalyzer {
 // constructors and destructor
 //
 HFanalyzer::HFanalyzer(const edm::ParameterSet& iConfig) :
-    _outFileName(iConfig.getUntrackedParameter<string>("OutFileName")),
-    _verbosity(iConfig.getUntrackedParameter<int>("Verbosity"))
+  _outFileName(iConfig.getUntrackedParameter<string>("OutFileName")),
+  _verbosity(iConfig.getUntrackedParameter<int>("Verbosity"))
 {
 
 
-    tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis"));
+  tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis"));
 
-   //now do what ever initialization is needed
+  //now do what ever initialization is needed
 
-    _file = new TFile(_outFileName.c_str(), "recreate");
-    _file->mkdir("QIE10Data");
+  _file = new TFile(_outFileName.c_str(), "recreate");
+  _file->mkdir("QIE10Data");
 
-    _file->cd("QIE10Data");
-    _treeQIE10 = new TTree("Events", "Events");
-    _treeQIE10->Branch("numChs", &_qie10Info.numChs, "numChs/I");
-    _treeQIE10->Branch("numTS", &_qie10Info.numTS, "numTS/I");
-    _treeQIE10->Branch("iphi", _qie10Info.iphi, "iphi[numChs]/I");
-    _treeQIE10->Branch("ieta", _qie10Info.ieta, "ieta[numChs]/I");
-    _treeQIE10->Branch("depth", _qie10Info.depth, "depth[numChs]/I");
-    _treeQIE10->Branch("pulse", _qie10Info.pulse, "pulse[numChs][50]/D");
-    _treeQIE10->Branch("ped", _qie10Info.ped, "ped[numChs]/D");
-    _treeQIE10->Branch("pulse_adc", _qie10Info.pulse_adc, "pulse_adc[numChs][50]/D");
-    _treeQIE10->Branch("ped_adc", _qie10Info.ped_adc, "ped_adc[numChs]/D");
-    _treeQIE10->Branch("link_error", _qie10Info.link_error, "link_error[numChs]/O");
-    _treeQIE10->Branch("soi", _qie10Info.soi, "soi[numChs][50]/O");
+  _file->cd("QIE10Data");
+  _treeQIE10 = new TTree("Events", "Events");
+  _treeQIE10->Branch("numChs", &_qie10Info.numChs, "numChs/I");
+  _treeQIE10->Branch("numTS", &_qie10Info.numTS, "numTS/I");
+  _treeQIE10->Branch("iphi", _qie10Info.iphi, "iphi[numChs]/I");
+  _treeQIE10->Branch("ieta", _qie10Info.ieta, "ieta[numChs]/I");
+  _treeQIE10->Branch("depth", _qie10Info.depth, "depth[numChs]/I");
+  _treeQIE10->Branch("pulse", _qie10Info.pulse, "pulse[numChs][50]/D");
+  _treeQIE10->Branch("ped", _qie10Info.ped, "ped[numChs]/D");
+  _treeQIE10->Branch("pulse_adc", _qie10Info.pulse_adc, "pulse_adc[numChs][50]/D");
+  _treeQIE10->Branch("ped_adc", _qie10Info.ped_adc, "ped_adc[numChs]/D");
+  _treeQIE10->Branch("link_error", _qie10Info.link_error, "link_error[numChs]/O");
+  _treeQIE10->Branch("soi", _qie10Info.soi, "soi[numChs][50]/O");
+
+  // for histo stuff
+  numChannels=0;
 
 }
 
 
 HFanalyzer::~HFanalyzer()
 {
- 
-   // do anything here that needs to be done at desctruction time
-   // (e.g. close files, deallocate resources etc.)
-    _file->Write();
-    _file->Close();
+  
+  _file->cd();
+
+  for( unsigned int j = 0 ; j < ADCspectrum.size() ; j++ ){
+    ADCspectrum[j]->Write();
+  }// end loop over ADCspectrum
+  for( unsigned int j = 0 ; j < Qspectrum.size() ; j++ ){    
+    Qspectrum[j]->Write();
+  }// end loop over Qspectrum
+  for( unsigned int j = 0 ; j < TDCspectrum.size() ; j++ ){    
+    TDCspectrum[j]->Write();
+  }// end loop over TDCspectrum
+  for( unsigned int j = 0 ; j < Pulse.size() ; j++ ){    
+    Pulse[j]->Write();
+  }// end loop over Pulse
+  for( unsigned int j = 0 ; j < Qpulse.size() ; j++ ){    
+    Qpulse[j]->Write();
+  }// end loop over Qpulse
+  for( unsigned int j = 0 ; j < TDCvsBX.size() ; j++ ){    
+    TDCvsBX[j]->Write();
+  }// end loop over TDCvsBX
+  
+  _file->Write();
+  _file->Close();
+
 }
 
 void HFanalyzer::getData(const edm::Event &iEvent, 
-                const edm::EventSetup &iSetup)
+			 const edm::EventSetup &iSetup)
 {
-    using namespace edm;
+  using namespace edm;
 
-    //
-    //  Extracting All the Collections containing useful Info
-    //
-    edm::Handle<QIE10DigiCollection> qie10DigiCollection;
 
-    iEvent.getByToken(tok_QIE10DigiCollection_,qie10DigiCollection);
-    
-    if (_verbosity>0)
+  //
+  //  Extracting All the Collections containing useful Info
+  iEvent.getByToken(tok_QIE10DigiCollection_,qie10DigiCollection);
+  const QIE10DigiCollection& qie10dc=*(qie10DigiCollection);
+  //  -----------------------------------------------------
+
+  if (_verbosity>0)
     {
       cout << "### Before Loop: " << endl;
       cout << "### QIE10 Digis=" << qie10DigiCollection->size() << endl;
 
     }
         
-
-    // --------------------------
-    // --   QIE10 Information  --
-    // --------------------------
+  // --------------------------
+  // --   QIE10 Information  --
+  // --------------------------
     
+  char histoName[100];
+
+  if (_verbosity>0) std::cout << "Trying to access the qie collection" << std::endl;
     
-    if (_verbosity>0) std::cout << "Trying to access the qie collection" << std::endl;
-    
-    const QIE10DigiCollection& qie10dc=*(qie10DigiCollection);
+  for (int j=0; j < qie10dc.size(); j++){
 
-    for (int j=0; j < qie10dc.size(); j++){
-        
-        if (_verbosity>0){
-            std::cout << "Printing raw dataframe" << std::endl;
-            std::cout << qie10dc[j] << std::endl;
-            
-            std::cout << "Printing content of samples() method" << std::endl;
-            std::cout << qie10dc[j].samples() << std::endl;
-        }
-        
-        // Extract info on detector location
-        DetId detid = qie10dc[j].detid();
-        HcalDetId hcaldetid = HcalDetId(detid);
-        int ieta = hcaldetid.ieta();
-        int iphi = hcaldetid.iphi();
-        int depth = hcaldetid.depth();
-        
-        if (_verbosity>0){
-            std::cout << "Where am I?\n detid: " << detid.rawId() << std::endl;
-            std::cout << " ieta: " << ieta << "\n"
-            << " iphi: " << iphi << "\n"
-            << " depth: " << depth << std::endl;
-        }
-        
-        // loop over the samples in the digi
-        int nTS = qie10dc[j].samples();
-
-        float ped_adc = 0;
-        float ped_fc = 0;
-
-        for(int i=0; i<nTS; ++i)
-        {
-            int adc = qie10dc[j][i].adc();
-            int tdc = qie10dc[j][i].le_tdc();
-            int capid = qie10dc[j][i].capid();
-            int soi = qie10dc[j][i].soi();
-            
-            // store pulse information
-            Converter Convertadc2fC_QIE10;
-            float charge = Convertadc2fC_QIE10.linearize(adc);
-            _qie10Info.pulse[j][i] = charge;
-            _qie10Info.pulse_adc[j][i] = adc;
-            _qie10Info.soi[j][i] = soi;
-
-            if (_verbosity>0)
-                std::cout << "Sample " << i << ": ADC=" << adc << " Charge=" << charge << "fC" << " TDC=" << tdc << " Capid=" << capid
-                          << " SOI=" << soi << std::endl;
-
-            // compute ped from first 3 time samples
-            if (i<3){
-                ped_adc += adc;
-                ped_fc += charge;
-            }
-            
-        }
-        ped_adc = ped_adc/3.;
-        ped_fc = ped_fc/3.; 
-
-        if (_verbosity>0)
-            std::cout << "The pedestal for this channel is " << ped_adc << "ADC counts and " << ped_fc << " fC" << std::endl;
-  
-        // -------------------------------------
-        // --    Set the Branched arrays      --
-        // -------------------------------------
-        _qie10Info.iphi[j] = iphi;
-        _qie10Info.ieta[j] = ieta;
-        _qie10Info.depth[j] = depth;
-        _qie10Info.ped[j] = ped_fc;
-        _qie10Info.ped_adc[j] = ped_adc;
-        _qie10Info.link_error[j] = qie10dc[j].linkError();
+    if( ADCspectrum.size() <= (unsigned int)j ){
+      sprintf(histoName,"ADCspectrum_%i",numChannels);
+      numChannels++;
+      //std::cout << histoName << std::endl;
+      ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
+      sprintf(histoName,"Qspectrum_%i",numChannels);
+      Qspectrum.push_back(new TH1F(histoName,histoName,2000,0.,350000.));      
+      sprintf(histoName,"TDCspectrum_%i",numChannels);
+      TDCspectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
+      sprintf(histoName,"Qpulse_%i",numChannels);
+      Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,2000,0.,350000.));      
+      sprintf(histoName,"Pulse_%i",numChannels);
+      Pulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
+      sprintf(histoName,"TDCvsBX_%i",numChannels);
+      TDCvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,63.5));      
     }
 
-    _qie10Info.numChs = qie10dc.size();
-    _qie10Info.numTS = qie10dc.samples();
+    if (_verbosity>0){
+      std::cout << "Printing raw dataframe" << std::endl;
+      std::cout << qie10dc[j] << std::endl;
+            
+      std::cout << "Printing content of samples() method" << std::endl;
+      std::cout << qie10dc[j].samples() << std::endl;
+    }
+        
+    // Extract info on detector location
+    DetId detid = qie10dc[j].detid();
+    HcalDetId hcaldetid = HcalDetId(detid);
+    int ieta = hcaldetid.ieta();
+    int iphi = hcaldetid.iphi();
+    int depth = hcaldetid.depth();
+        
+    if (_verbosity>0){
+      std::cout << " detid: " << detid.rawId() << std::endl;
+      std::cout << " ieta: " << ieta << "\n"
+		<< " iphi: " << iphi << "\n"
+		<< " depth: " << depth << std::endl;
+    }
+        
+    // loop over the samples in the digi
+    int nTS = qie10dc[j].samples();
 
-    _treeQIE10->Fill();
+    float ped_adc = 0;
+    float ped_fc = 0;
+
+    for(int i=0; i<nTS; ++i)
+      {
+
+	// j - QIE channel
+	// i - time sample (TS)
+	int adc = qie10dc[j][i].adc();
+	int tdc = qie10dc[j][i].le_tdc();
+	int capid = qie10dc[j][i].capid();
+	int soi = qie10dc[j][i].soi();
+
+	// store pulse information
+	float charge = adc2fC_QIE10[ adc ];
+
+	ADCspectrum[j]->Fill( adc );
+	Qspectrum[j]->Fill( charge );
+	TDCspectrum[j]->Fill( tdc );
+
+	Qpulse[j]->Fill( i , charge );
+	Pulse[j]->Fill( i , adc );
+	TDCvsBX[j]->Fill( i , tdc );
+
+	_qie10Info.pulse[j][i] = charge;
+	_qie10Info.pulse_adc[j][i] = adc;
+	_qie10Info.soi[j][i] = soi;
+
+	if (_verbosity>0)
+	  std::cout << "Sample " << i << ": ADC=" << adc << " Charge=" << charge << "fC" << " TDC=" << tdc << " Capid=" << capid
+		    << " SOI=" << soi << std::endl;
+
+	// compute ped from first 3 time samples
+	if (i<3){
+	  ped_adc += adc;
+	  ped_fc += charge;
+	}
+            
+      }
+    ped_adc = ped_adc/3.;
+    ped_fc = ped_fc/3.; 
+
+    if (_verbosity>0)
+      std::cout << "The pedestal for this channel is " << ped_adc << "ADC counts and " << ped_fc << " fC" << std::endl;
+  
+    // -------------------------------------
+    // --    Set the Branched arrays      --
+    // -------------------------------------
+    _qie10Info.iphi[j] = iphi;
+    _qie10Info.ieta[j] = ieta;
+    _qie10Info.depth[j] = depth;
+    _qie10Info.ped[j] = ped_fc;
+    _qie10Info.ped_adc[j] = ped_adc;
+    _qie10Info.link_error[j] = qie10dc[j].linkError();
+  }
+
+  _qie10Info.numChs = qie10dc.size();
+  _qie10Info.numTS = qie10dc.samples();
+
+  _treeQIE10->Fill();
 
 
-    return;
+  return;
 }
 
 
@@ -320,18 +415,18 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 void
 HFanalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-   using namespace edm;
+  using namespace edm;
 
-    getData(iEvent, iSetup);
+  getData(iEvent, iSetup);
 
 #ifdef THIS_IS_AN_EVENT_EXAMPLE
-   Handle<ExampleData> pIn;
-   iEvent.getByLabel("example",pIn);
+  Handle<ExampleData> pIn;
+  iEvent.getByLabel("example",pIn);
 #endif
 
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
-   ESHandle<SetupData> pSetup;
-   iSetup.get<SetupRecord>().get(pSetup);
+  ESHandle<SetupData> pSetup;
+  iSetup.get<SetupRecord>().get(pSetup);
 #endif
 }
 
@@ -346,8 +441,8 @@ HFanalyzer::beginJob()
 void 
 HFanalyzer::endJob() 
 {
-//      _file->Write();
-//      _file->Close();
+  //      _file->Write();
+  //      _file->Close();
 }
 
 // ------------ method called when starting to processes a run  ------------
@@ -360,8 +455,8 @@ HFanalyzer::beginRun(edm::Run const&, edm::EventSetup const&)
 void 
 HFanalyzer::endRun(edm::Run const&, edm::EventSetup const&)
 {
-//      _file->Write();
-//      _file->Close();
+  //      _file->Write();
+  //      _file->Close();
 }
 
 // ------------ method called when starting to processes a luminosity block  ------------

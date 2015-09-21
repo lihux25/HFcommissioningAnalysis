@@ -23,7 +23,7 @@ runNumber = sys.argv[2]
 
 process.source = cms.Source("HcalTBSource",
     fileNames = cms.untracked.vstring(
-        'file:./B904_Integration_'+runNumber+'.root'
+        'file:/afs/cern.ch/work/w/whitbeck/public/B904_Integration_'+runNumber+'.root'
     )
 )
 
@@ -38,7 +38,7 @@ process.tbunpack = cms.EDProducer("HcalTBObjectUnpacker",
         HcalTriggerFED = cms.untracked.int32(1),
         HcalTDCFED = cms.untracked.int32(8),
         HcalQADCFED = cms.untracked.int32(8),
-            fedRawDataCollectionTag = cms.InputTag('source')
+        fedRawDataCollectionTag = cms.InputTag('source')
 )
 
 process.hcalDigis = cms.EDProducer("HcalRawToDigi",
@@ -58,7 +58,7 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
 
 process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
         OutFileName = cms.untracked.string('HFanalysisTree_'+runNumber+'.root'),
-        Verbosity = cms.untracked.int32(3)
+        Verbosity = cms.untracked.int32(0)
 )
 
 #
@@ -91,6 +91,9 @@ process.es_prefer = cms.ESPrefer('HcalTextCalibrations', 'es_ascii')
 
 process.dump = cms.EDAnalyzer("HcalDigiDump")
 
-process.p = cms.Path(process.hcalDigis*process.dump*process.hcalAnalyzer)
+process.p = cms.Path(process.hcalDigis
+                     #*process.dump
+                     *process.hcalAnalyzer
+                     )
 process.outpath = cms.EndPath(process.output)
 
