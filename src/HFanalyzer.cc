@@ -11,16 +11,6 @@
    [Notes on implementation]
 */
 //
-// Original Authors:  Jay Dittmann, Nadja Strobbe, Joe Pastika
-// Based on work by:  Viktor Khristenko,510 1-004,+41227672815,
-//         Created:   Tue Sep 16 15:47:09 CEST 2014
-// $Id$
-//
-//
-
-
-// system include files
-#include <memory>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -177,6 +167,7 @@ private:
   vector<TH1F*> Qspectrum;
   vector<TH1F*> TDCspectrum;
   vector<TH2F*> Qpulse;
+  vector<TH2F*> PedVsCapID;
   vector<TH2F*> Pulse;
   vector<TH2F*> TDCvsBX;
 
@@ -264,6 +255,9 @@ HFanalyzer::~HFanalyzer()
   for( unsigned int j = 0 ; j < TDCvsBX.size() ; j++ ){    
     TDCvsBX[j]->Write();
   }// end loop over TDCvsBX
+  for( unsigned int j = 0 ; j < PedVsCapID.size() ; j++ ){    
+    PedVsCapID[j]->Write();
+  }// end loop over PedVsCapID
   
   _file->Write();
   _file->Close();
@@ -305,15 +299,17 @@ void HFanalyzer::getData(const edm::Event &iEvent,
       //std::cout << histoName << std::endl;
       ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
       sprintf(histoName,"Qspectrum_%i",numChannels);
-      Qspectrum.push_back(new TH1F(histoName,histoName,2000,0.,350000.));      
+      Qspectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
       sprintf(histoName,"TDCspectrum_%i",numChannels);
       TDCspectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
       sprintf(histoName,"Qpulse_%i",numChannels);
-      Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,2000,0.,350000.));      
+      Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
       sprintf(histoName,"Pulse_%i",numChannels);
       Pulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
       sprintf(histoName,"TDCvsBX_%i",numChannels);
       TDCvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,63.5));      
+      sprintf(histoName,"PedVsCapID_%i",numChannels);
+      PedVsCapID.push_back(new TH2F(histoName,histoName,40,-0.5,3.5,30,0.0,90.0));      
     }
 
     if (_verbosity>0){
@@ -364,6 +360,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 	Qpulse[j]->Fill( i , charge );
 	Pulse[j]->Fill( i , adc );
 	TDCvsBX[j]->Fill( i , tdc );
+	PedVsCapID[j]->Fill( capid , charge );
 
 	_qie10Info.pulse[j][i] = charge;
 	_qie10Info.pulse_adc[j][i] = adc;

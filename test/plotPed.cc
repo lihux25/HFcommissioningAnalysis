@@ -30,14 +30,12 @@ int main( int argc, const char* argv[] ){
   if( argc < 2 ){
     cout << "Please provide the input file as a command line argument" << endl; 
     return 1;
-  }else if( argc < 3 ){
-    rangeBoundary = atof(argv[2]);
   }
     
  
   TFile* inputFile = new TFile( inputFileName , "READ" );
 
-  const int numChans = 29 ;
+  const int numChans = 48 ;
 
   TProfile* pulseProfile[numChans];
   TString pulseNameTemp = "Qpulse_";
@@ -56,11 +54,11 @@ int main( int argc, const char* argv[] ){
     pulseProfile[i] = (TProfile*) pulse2D[i]->ProfileX( pulseName , 1 , -1 , "s" );
 
     //pulseProfile[i]->GetYaxis()->SetRangeUser(1,rangeBoundary);
-    pulseProfile[i]->GetYaxis()->SetRangeUser(1,250); //pulseProfile[i]->GetYmax()*1.5);
+    pulseProfile[i]->GetYaxis()->SetRangeUser(1,35);
     pulseProfile[i]->GetYaxis()->SetTitle("Charge [fC]");    
     pulseProfile[i]->GetXaxis()->SetTitle("BX");
-    pulseProfile[i]->SetLineColor( 1 );
-    pulseProfile[i]->SetMarkerColor( 1 );
+    pulseProfile[i]->SetLineColor( i%4+1 );
+    pulseProfile[i]->SetMarkerColor( i%4+1 );
     pulseProfile[i]->SetMarkerStyle( 8 );
 
   }
@@ -69,10 +67,15 @@ int main( int argc, const char* argv[] ){
 
   for( int i = 1 ; i <= numChans ; i++ ){
 
-    pulseProfile[i]->Draw();
+    if( i % 4 == 1 )
+      pulseProfile[i]->Draw();
+    else 
+      pulseProfile[i]->Draw("SAME");
 
-    TString fileName = "pulseShape_" + TString::Itoa(i,10) + ".png" ;
-    can->SaveAs(fileName);
+    if( i % 4 == 0 ){
+      TString fileName = "pulseShape_" + TString::Itoa(i/4,10) + ".png" ;
+      can->SaveAs(fileName);
+    }
 
   }
 
