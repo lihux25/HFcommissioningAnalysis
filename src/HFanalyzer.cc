@@ -174,7 +174,7 @@ private:
   vector<TH2F*> TDCvsBX;                // 2D hist: TDC leading edge vs. BX
   vector<TH2F*> TDCtrailVsBX;           // 2D hist: TDC trailing edge vs. BX
   vector<TH2F*> PedVsCapID;   		// 2D hist: Pedestal vs. CapID
-  vector<TProfile*> QProfile;           // Profile of "Qpulse" histogram
+  vector<TProfile*> QProfile;           // Profile of "Qpulse" histograms
 
 
   int numChannels;
