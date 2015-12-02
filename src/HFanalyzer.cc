@@ -174,7 +174,7 @@ private:
   vector<TH2F*> TDCvsBX;                // 2D hist: TDC leading edge vs. BX
   vector<TH2F*> TDCtrailVsBX;           // 2D hist: TDC trailing edge vs. BX
   vector<TH2F*> PedVsCapID;   		// 2D hist: Pedestal vs. CapID
-  vector<TProfile*> QProfile;           // Profile of "Qpulse" histograms
+  //  vector<TProfile*> QProfile;           // Profile of "Qpulse" histograms
 
 
   int numChannels;
@@ -276,9 +276,9 @@ HFanalyzer::~HFanalyzer()
   for( unsigned int j = 0 ; j < PedVsCapID.size() ; j++ ){    
     PedVsCapID[j]->Write();
   }// end loop over PedVsCapID
-  for( unsigned int j = 0 ; j < QProfile.size() ; j++ ){
-    QProfile[j]->Write();
-  }// end loop over QProfile 
+  //  for( unsigned int j = 0 ; j < QProfile.size() ; j++ ){
+  //    QProfile[j]->Write();
+  //  }// end loop over QProfile 
   
   _file->Write();
   _file->Close();
@@ -309,7 +309,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
   // --------------------------
     
   char histoName[100];
-  char QProfileName[100];
+  //  char QProfileName[100];
 
   if (_verbosity>0) std::cout << "Trying to access the qie collection" << std::endl;
     
@@ -350,7 +350,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 	sprintf(histoName,"PulseEnergy1D_%i",numChannels);
         PulseEnergy1D.push_back(new TH1F(histoName,histoName,30,0.,100.));
 
-        QProfile.push_back(new TProfile(QProfileName,QProfileName,10,-0.5,9.5,0,100));
+	//        QProfile.push_back(new TProfile(QProfileName,QProfileName,10,-0.5,9.5,0,100));
 
     }
 
@@ -418,13 +418,13 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 	//-------------------------------------------------
 	//--Create a profile for each "Qpulse" histogram --
 	//-------------------------------------------------
-	sprintf(QProfileName,"QProfile_%i)",j+1);
-        QProfile[j] = (TProfile*) Qpulse[j]->ProfileX( QProfileName, 1 , -1 , "s" );
-        QProfile[j]->GetYaxis()->SetTitle("Charge [fC]");
-        QProfile[j]->GetXaxis()->SetTitle("BX");
-        QProfile[j]->SetLineColor( i%4+1 );
-        QProfile[j]->SetMarkerColor( i%4+1 );
-        QProfile[j]->SetMarkerStyle( 8 );
+	//	sprintf(QProfileName,"QProfile_%i)",j+1);
+	//        QProfile[j] = (TProfile*) Qpulse[j]->ProfileX( QProfileName, 1 , -1 , "s" );
+	//        QProfile[j]->GetYaxis()->SetTitle("Charge [fC]");
+	//        QProfile[j]->GetXaxis()->SetTitle("BX");
+	//        QProfile[j]->SetLineColor( i%4+1 );
+	//        QProfile[j]->SetMarkerColor( i%4+1 );
+	//        QProfile[j]->SetMarkerStyle( 8 );
 	//--------------------------------------------------
 
 	_qie10Info.pulse[j][i] = charge;
