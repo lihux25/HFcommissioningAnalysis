@@ -24,8 +24,8 @@ runNumber = sys.argv[2]
 process.source = cms.Source("HcalTBSource",
     fileNames = cms.untracked.vstring(
         #'file:/afs/cern.ch/user/e/ealvesco/public/B904_Integration_'+runNumber+'.root'
-        #'file:/afs/cern.ch/user/w/whitbeck/workPublic/B904_Integration_'+runNumber+'.root'
-        'file:/afs/cern.ch/user/y/yanchu/work/public/B904_Integration_'+runNumber+'.root'
+        'file:/afs/cern.ch/user/w/whitbeck/workPublic/B904_Integration_'+runNumber+'.root'
+        #'file:/afs/cern.ch/user/y/yanchu/work/public/B904_Integration_'+runNumber+'.root'
     )
 )
 
