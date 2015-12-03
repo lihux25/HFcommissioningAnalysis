@@ -36,7 +36,7 @@ void plotPulseProfile(TString runNumber){
   
 TString inputName = "HFanalysisTree_000"+runNumber+".root";
 TString outputNameRoot = "/afs/cern.ch/user/y/yanchu/work/public/cms904/plusprofile/pulseProfile_"+runNumber+".root";
-TString outputNamePngfolder = "/afs/cern.ch/user/y/yanchu/www/904LED/pulseProfile_"+runNumber;
+ TString outputNamePngfolder = "/afs/cern.ch/user/y/yanchu/www/904LED/run_"+runNumber+"/pulseProfile";
  system("mkdir -p "+outputNamePngfolder);
 TFile* inputFile = new TFile( inputName , "READ" );
 TFile* outputFile = new TFile( outputNameRoot , "RECREATE");
@@ -55,7 +55,7 @@ for( int i = 1 ; i <= numChans ; i++ ){
 
 	pulse2D[i] = (TH2F*) inputFile->Get( pulseName );
    		
-		if( pulse2D[i] == NULL ) continue;
+	if( pulse2D[i] == NULL ) continue;
     
    	pulseName = "QpulseProfile_" + TString::Itoa(i,10);
     	pulseProfile[i] = (TProfile*) pulse2D[i]->ProfileX( pulseName , 1 , -1 , "s" );

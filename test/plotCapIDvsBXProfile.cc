@@ -18,7 +18,7 @@ and makes pulse shape profiles
 
 using namespace std;
 
-void plotPulseProfile(TString runNumber){
+void plotCapIDvsBXProfile(TString runNumber){
   gStyle->SetOptStat(000000);
   //gROOT->ProcessLine(".L ~/tdrstyle.C");
   //gROOT->ProcessLine("setTDRStyle()");
@@ -36,14 +36,10 @@ void plotPulseProfile(TString runNumber){
   
 TString inputName = "HFanalysisTree_000"+runNumber+".root";
 TString outputNameRoot = "/afs/cern.ch/user/y/yanchu/work/public/cms904/plusprofile/CapIDvsBXProfile_"+runNumber+".root";
-TString outputNamePngfolder = "/afs/cern.ch/user/y/yanchu/www/904LED/plotCapIDvsBXProfile_"+runNumber;
-//TString outputNameRootTest = "/afs/cern.ch/work/e/ealvesco/CMSSW_7_5_0_pre5/src/HFcommissioning/Analysis/test/plotCapIDvsBXProfile_"+runNumber+".root";
-//TString outputFolder = "/afs/cern.ch/work/e/ealvesco/CMSSW_7_5_0_pre5/src/HFcommissioning/Analysis/test/plotCapIDvsBXProfile_"+runNumber;
-// system("mkdir -p "+outputNamePngfolder);
- system("mkdir -p "+outputFolder);
-
+ TString outputNamePngfolder = "/afs/cern.ch/user/y/yanchu/www/904LED/run_"+runNumber+"/plotCapIDvsBXProfile";
+ system("mkdir -p "+outputNamePngfolder);
 TFile* inputFile = new TFile( inputName , "READ" );
-TFile* outputFile = new TFile( outputNameRootTest , "RECREATE");
+TFile* outputFile = new TFile( outputNameRoot , "RECREATE");
 cout << "LOADED" << endl;
 const int numChans = 96 ;
 
@@ -80,8 +76,6 @@ for( int i = 1 ; i <= numChans ; i++ ){
 	pulseProfile[i]->SetMaximum(pulseProfile[i]->GetMaximum()*1.2);
     	pulseProfile[i]->Draw();
    	TString fileName = outputNamePngfolder+"/CapIDvsBX_" + TString::Itoa(i,10) + ".png" ;
-        //TString fileNametest = outputFolder+"/CapIDvsBX_" + TString::Itoa(i,10) + ".png" ;
- 
   	can->SaveAs(fileName);
  }
 // can->SaveAs(outputNameRoot);
