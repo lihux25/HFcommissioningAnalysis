@@ -174,6 +174,7 @@ private:
   vector<TH2F*> TDCvsBX;                // 2D hist: TDC leading edge vs. BX
   vector<TH2F*> TDCtrailVsBX;           // 2D hist: TDC trailing edge vs. BX
   vector<TH2F*> PedVsCapID;   		// 2D hist: Pedestal vs. CapID
+  vector<TH2F*> CapIDvsBX;
   //  vector<TProfile*> QProfile;           // Profile of "Qpulse" histograms
 
 
@@ -276,6 +277,9 @@ HFanalyzer::~HFanalyzer()
   for( unsigned int j = 0 ; j < PedVsCapID.size() ; j++ ){    
     PedVsCapID[j]->Write();
   }// end loop over PedVsCapID
+  for( unsigned int j = 0 ; j < CapIDvsBX.size() ; j++ ){
+    CapIDvsBX[j]->Write();
+  }
   //  for( unsigned int j = 0 ; j < QProfile.size() ; j++ ){
   //    QProfile[j]->Write();
   //  }// end loop over QProfile 
@@ -350,6 +354,9 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 	sprintf(histoName,"PulseEnergy1D_%i",numChannels);
         PulseEnergy1D.push_back(new TH1F(histoName,histoName,30,0.,100.));
 
+	sprintf(histoName,"CapIDvsBX_%i",numChannels);
+        CapIDvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,40,-0.5,3.5));
+
 	//        QProfile.push_back(new TProfile(QProfileName,QProfileName,10,-0.5,9.5,0,100));
 
     }
@@ -414,7 +421,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
         TDCtrailVsBX[j]->Fill( i , trail );
 	TDCvsBX[j]->Fill( i , tdc );
 	PedVsCapID[j]->Fill( capid , charge );
-
+	CapIDvsBX[j]->Fill ( i , capid );
 	//-------------------------------------------------
 	//--Create a profile for each "Qpulse" histogram --
 	//-------------------------------------------------
