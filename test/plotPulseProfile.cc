@@ -34,7 +34,7 @@ void plotPulseProfile(TString runNumber){
     
 */ 
   
-TString inputName = "HFanalysisTree_000"+runNumber+".root";
+TString inputName = "HFanalysisTree_"+runNumber+".root";
 TString outputNameRoot = "/afs/cern.ch/user/y/yanchu/work/public/cms904/plusprofile/pulseProfile_"+runNumber+".root";
  TString outputNamePngfolder = "/afs/cern.ch/user/y/yanchu/www/904LED/run_"+runNumber+"/pulseProfile";
  system("mkdir -p "+outputNamePngfolder);
@@ -59,7 +59,7 @@ for( int i = 1 ; i <= numChans ; i++ ){
     
    	pulseName = "QpulseProfile_" + TString::Itoa(i,10);
     	pulseProfile[i] = (TProfile*) pulse2D[i]->ProfileX( pulseName , 1 , -1 , "s" );
-
+    	pulseProfile[i]->SetTitle("Qpulse_ch" + TString::Itoa(i,10));    
     	pulseProfile[i]->GetYaxis()->SetTitle("Charge [fC]");    
     	pulseProfile[i]->GetXaxis()->SetTitle("BX");
     	pulseProfile[i]->SetLineColor( i%4+1 );
@@ -75,7 +75,7 @@ for( int i = 1 ; i <= numChans ; i++ ){
 	pulseProfile[i]->SetMinimum(0);
 	pulseProfile[i]->SetMaximum(pulseProfile[i]->GetMaximum()*1.2);
     	pulseProfile[i]->Draw();
-   	TString fileName = outputNamePngfolder+"/pulseShape_" + TString::Itoa(i,10) + ".png" ;
+   	TString fileName = outputNamePngfolder+"/pulseShape_ch" + TString::Itoa(i,10) + ".png" ;
    	can->SaveAs(fileName);
  }
 // can->SaveAs(outputNameRoot);
