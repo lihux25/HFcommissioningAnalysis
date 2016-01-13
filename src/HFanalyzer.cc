@@ -27,6 +27,7 @@
 #include "EventFilter/HcalRawToDigi/interface/HcalUnpacker.h"
 #include "DataFormats/HcalDetId/interface/HcalOtherDetId.h"
 #include "DataFormats/HcalDigi/interface/HcalQIESample.h"
+#include "DataFormats/HcalDigi/interface/QIE10DataFrame.h"
 #include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
 #include "DataFormats/HcalDetId/interface/HcalCalibDetId.h"
 
@@ -317,9 +318,11 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 
   if (_verbosity>0) std::cout << "Trying to access the qie collection" << std::endl;
     
-  for (int j=0; j < qie10dc.size(); j++){
+  for (unsigned int j=0; j < qie10dc.size(); j++){
 
-    if( ADCspectrum.size() <= (unsigned int)j ){
+    QIE10DataFrame qie10df = static_cast<QIE10DataFrame>(qie10dc[j]);
+ 
+    if( ADCspectrum.size() <= j ){
 	sprintf(histoName,"ADCspectrum_%i",numChannels);
 	numChannels++;
     	ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
@@ -363,14 +366,14 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 
     if (_verbosity>0){
       std::cout << "Printing raw dataframe" << std::endl;
-      std::cout << qie10dc[j] << std::endl;
+      std::cout << qie10df << std::endl;
             
       std::cout << "Printing content of samples() method" << std::endl;
-      std::cout << qie10dc[j].samples() << std::endl;
+      std::cout << qie10df.samples() << std::endl;
     }
-        
+  
     // Extract info on detector location
-    DetId detid = qie10dc[j].detid();
+    DetId detid = qie10df.detid();
     HcalDetId hcaldetid = HcalDetId(detid);
     int ieta = hcaldetid.ieta();
     int iphi = hcaldetid.iphi();
@@ -384,7 +387,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
     }
         
     // loop over the samples in the digi
-    int nTS = qie10dc[j].samples();
+    int nTS = qie10df.samples();
 
     float ped_adc = 0;
     float ped_fc = 0;
@@ -394,11 +397,11 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 
 	// j - QIE channel
 	// i - time sample (TS)
-	int adc = qie10dc[j][i].adc();
-	int tdc = qie10dc[j][i].le_tdc();
-	int trail = qie10dc[j][i].te_tdc();
-	int capid = qie10dc[j][i].capid();
-	int soi = qie10dc[j][i].soi();
+	int adc = qie10df[i].adc();
+	int tdc = qie10df[i].le_tdc();
+	int trail = qie10df[i].te_tdc();
+	int capid = qie10df[i].capid();
+	int soi = qie10df[i].soi();
 
 	// store pulse information
 	float charge = adc2fC_QIE10[ adc ];
@@ -407,7 +410,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 	//-- Compute the charge of SOI and the next BX --
 	//----------------------------------------------
         if (_qie10Info.soi[j][i] != 0){
-		float PulseEnergy = qie10dc[j][i].adc() + qie10dc[j][i+1].adc();
+		float PulseEnergy = qie10df[i].adc() + qie10df[i+1].adc();
 		SOIplusBX[j]->Fill( i , PulseEnergy);
                 PulseEnergy1D[j]->Fill(PulseEnergy);
 		}
@@ -465,7 +468,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
     _qie10Info.depth[j] = depth;
     _qie10Info.ped[j] = ped_fc;
     _qie10Info.ped_adc[j] = ped_adc;
-    _qie10Info.link_error[j] = qie10dc[j].linkError();
+    _qie10Info.link_error[j] = qie10df.linkError();
   }
 
   _qie10Info.numChs = qie10dc.size();

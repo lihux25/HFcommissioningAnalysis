@@ -84,7 +84,7 @@ process.es_ascii = cms.ESSource('HcalTextCalibrations',
         input = cms.VPSet(
                cms.PSet(
                 object = cms.string('ElectronicsMap'),
-                file = cms.FileInPath('HFcommissioning/Analysis/test/EMAP-QIE10.txt')
+                file = cms.FileInPath('HFcommissioning/Analysis/test/EMAP-QUADRANT.txt')
                )
         )
 )
@@ -94,7 +94,7 @@ process.es_prefer = cms.ESPrefer('HcalTextCalibrations', 'es_ascii')
 process.dump = cms.EDAnalyzer("HcalDigiDump")
 
 process.p = cms.Path(process.hcalDigis
-                     #*process.dump
+                     *process.dump
                      *process.hcalAnalyzer
                      )
 process.outpath = cms.EndPath(process.output)
