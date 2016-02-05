@@ -23,12 +23,10 @@ runNumber = sys.argv[2]
 
 process.source = cms.Source("HcalTBSource",
     fileNames = cms.untracked.vstring(
-        #'file:/afs/cern.ch/user/e/ealvesco/public/B904_Integration_'+runNumber+'.root'
-        'file:/afs/cern.ch/user/w/whitbeck/workPublic/B904_Integration_'+runNumber+'.root'
-        #'file:/afs/cern.ch/user/y/yanchu/work/public/B904_Integration_'+runNumber+'.root'
+        'file:/afs/cern.ch/user/y/yanchu/work/public/cms904/'+runNumber
     )
 )
-
+runNumber=runNumber.split('_')[-1]
 process.options = cms.untracked.PSet(
         wantSummary = cms.untracked.bool(False)
         )
@@ -59,7 +57,7 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
 
 
 process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
-        OutFileName = cms.untracked.string('HFanalysisTree_'+runNumber+'.root'),
+        OutFileName = cms.untracked.string('HFanalysisTree_'+runNumber),
         Verbosity = cms.untracked.int32(0)
 )
 
@@ -68,7 +66,7 @@ process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
 #
 process.output = cms.OutputModule(
         'PoolOutputModule',
-        fileName = cms.untracked.string('HFanalysis_'+runNumber+'.root')
+        fileName = cms.untracked.string('HFanalysis_'+runNumber)
 )
 
 process.load('Configuration.Geometry.GeometryIdeal_cff')
@@ -94,7 +92,7 @@ process.es_prefer = cms.ESPrefer('HcalTextCalibrations', 'es_ascii')
 process.dump = cms.EDAnalyzer("HcalDigiDump")
 
 process.p = cms.Path(process.hcalDigis
-                     *process.dump
+                     #*process.dump
                      *process.hcalAnalyzer
                      )
 process.outpath = cms.EndPath(process.output)
