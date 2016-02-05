@@ -166,18 +166,15 @@ private:
   vector<TH1F*> ADCspectrum;		// 1D hist: ADC values
   vector<TH1F*> Qspectrum;      	// 1D hist: charge in fC
   vector<TH1F*> TDCspectrum;		// 1D hist: TDC leading edge
-  vector<TH1F*> TDCtrailing;		// 1D hist: TDC trailing edge   
   vector<TH2F*> Pulse;			// 2D hist: charge (non converted) vs. time sample (BX)
   vector<TH2F*> Qpulse;			// 2D hist: charge vs. time sample (BX)
-  vector<TH2F*> SOIplusBX;      	// 2D hist: charge of Sample of interest(SOI) vs. time sample (BX)
-  vector<TH1F*> PulseEnergy1D;          // 1D hist: charge of SOI + charge of next BX 
   vector<TH2F*> TDCvsBX;                // 2D hist: TDC leading edge vs. BX
-  vector<TH2F*> TDCtrailVsBX;           // 2D hist: TDC trailing edge vs. BX
   vector<TH2F*> PedVsCapID;   		// 2D hist: Pedestal vs. CapID
-  vector<TProfile*> QProfile;           // Profile of "Qpulse" histograms
 
+  TH2F* meanChargeMap,*meanChargeSquaredMap;
 
   int numChannels;
+  int evtCount;
   string _outFileName;
   int _verbosity;
 
@@ -234,6 +231,11 @@ HFanalyzer::HFanalyzer(const edm::ParameterSet& iConfig) :
 
   // for histo stuff
   numChannels=0;
+  evtCount=0;
+
+  // ieta,iphi maps
+  meanChargeMap = new TH2F("meanChargeMap","meanChargeMap",83,-41.5,41.5,72,-0.5,71.5);
+  meanChargeSquaredMap = new TH2F("meanChargeSquaredMap","meanChargeSquaredMap",83,-41.5,41.5,72,-0.5,71.5);
 
 }
 
@@ -252,33 +254,20 @@ HFanalyzer::~HFanalyzer()
   for( unsigned int j = 0 ; j < TDCspectrum.size() ; j++ ){    
     TDCspectrum[j]->Write();
   }// end loop over TDCspectrum
-  for ( unsigned int j = 0 ; j < TDCtrailing.size() ; j++ ){
-    TDCtrailing[j]->Write();
-  }//end loop over TDCtrailing
   for( unsigned int j = 0 ; j < Pulse.size() ; j++ ){    
     Pulse[j]->Write();
   }// end loop over Pulse
   for( unsigned int j = 0 ; j < Qpulse.size() ; j++ ){    
     Qpulse[j]->Write();
   }// end loop over Qpulse
-  for( unsigned int j = 0 ; j < SOIplusBX.size() ; j++ ){
-    SOIplusBX[j]->Write();
-  }// end loop over SOIplusBX  
-  for( unsigned int j = 0 ; j < PulseEnergy1D.size() ; j++ ){
-  PulseEnergy1D[j]->Write();
-  }// end loop over PulseEnergy 
-  for( unsigned int j = 0 ; j < TDCtrailVsBX.size() ; j++ ){
-    TDCtrailVsBX[j]->Write();
-  }// end loop over TDCtrailvsBX 
   for( unsigned int j = 0 ; j < TDCvsBX.size() ; j++ ){    
     TDCvsBX[j]->Write();
   }// end loop over TDCvsBX
-  for( unsigned int j = 0 ; j < PedVsCapID.size() ; j++ ){    
-    PedVsCapID[j]->Write();
-  }// end loop over PedVsCapID
-  for( unsigned int j = 0 ; j < QProfile.size() ; j++ ){
-    QProfile[j]->Write();
-  }// end loop over QProfile 
+
+  meanChargeMap->Scale(1./evtCount);
+  meanChargeMap->Write();
+  meanChargeSquaredMap->Scale(1./evtCount);
+  meanChargeSquaredMap->Write();
   
   _file->Write();
   _file->Close();
@@ -309,50 +298,10 @@ void HFanalyzer::getData(const edm::Event &iEvent,
   // --------------------------
     
   char histoName[100];
-  char QProfileName[100];
 
   if (_verbosity>0) std::cout << "Trying to access the qie collection" << std::endl;
     
   for (int j=0; j < qie10dc.size(); j++){
-
-    if( ADCspectrum.size() <= (unsigned int)j ){
-	sprintf(histoName,"ADCspectrum_%i",numChannels);
-	numChannels++;
-    	ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
-   	
-	sprintf(histoName,"Qspectrum_%i",numChannels);
-      	Qspectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
-
-      	sprintf(histoName,"TDCspectrum_%i",numChannels);
-      	TDCspectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
-
-	sprintf(histoName,"TDCtrailing_%i",numChannels);
-     	TDCtrailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
-
-  	sprintf(histoName,"Qpulse_%i",numChannels);
-	Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
-
-      	sprintf(histoName,"Pulse_%i",numChannels);
-      	Pulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
-
-	sprintf(histoName,"SOIplusBX_%i",numChannels);
-        SOIplusBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,30,0.,100.));
-
-        sprintf(histoName,"TDCtrailVsBX_%i",numChannels);
-        TDCtrailVsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,100));
-
-        sprintf(histoName,"TDCvsBX_%i",numChannels);
-      	TDCvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,63.5));      
-
-      	sprintf(histoName,"PedVsCapID_%i",numChannels);
-      	PedVsCapID.push_back(new TH2F(histoName,histoName,40,-0.5,3.5,30,0.0,90.0));      
-
-	sprintf(histoName,"PulseEnergy1D_%i",numChannels);
-        PulseEnergy1D.push_back(new TH1F(histoName,histoName,30,0.,100.));
-
-        QProfile.push_back(new TProfile(QProfileName,QProfileName,10,-0.5,9.5,0,100));
-
-    }
 
     if (_verbosity>0){
       std::cout << "Printing raw dataframe" << std::endl;
@@ -376,11 +325,47 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 		<< " depth: " << depth << std::endl;
     }
         
+    if( ADCspectrum.size() <= (unsigned int)j ){
+        sprintf(histoName,"ADCspectrum_ieta%i_iphi%i_depth%i",ieta,iphi,depth);
+        numChannels++;
+    	ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
+   	
+	sprintf(histoName,"Qspectrum_ieta%i_iphi%i_depth%i",ieta,iphi,depth);
+      	Qspectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
+
+      	sprintf(histoName,"TDCspectrum_ieta%i_iphi%i_depth%i",ieta,iphi,depth);
+      	TDCspectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
+
+  	sprintf(histoName,"Qpulse_ieta%i_iphi%i_depth%i",ieta,iphi,depth);
+	Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
+
+      	sprintf(histoName,"Pulse_ieta%i_iphi%i_depth%i",ieta,iphi,depth);
+      	Pulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
+
+        sprintf(histoName,"TDCvsBX_ieta%i_iphi%i_depth%i",ieta,iphi,depth);
+      	TDCvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,63.5));      
+
+      	sprintf(histoName,"PedVsCapID_ieta%i_iphi%i_depth%i",ieta,iphi,depth);
+      	PedVsCapID.push_back(new TH2F(histoName,histoName,40,-0.5,3.5,30,0.0,90.0));      
+
+    }
+
     // loop over the samples in the digi
     int nTS = qie10dc[j].samples();
 
     float ped_adc = 0;
     float ped_fc = 0;
+
+    //Rename histograms according to iEta, iPhi, and Depth
+    char histoName[100];
+    if( evtCount == 0 ){
+      sprintf(histoName,"ADCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      ADCspectrum[j]->SetNameTitle(histoName,histoName);
+      sprintf(histoName,"Qspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      Qspectrum[j]->SetNameTitle(histoName,histoName);
+      sprintf(histoName,"TDCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDCspectrum[j]->SetNameTitle(histoName,histoName);
+    }
 
     for(int i=0; i<nTS; ++i)
       {
@@ -389,43 +374,23 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 	// i - time sample (TS)
 	int adc = qie10dc[j][i].adc();
 	int tdc = qie10dc[j][i].le_tdc();
-	int trail = qie10dc[j][i].te_tdc();
 	int capid = qie10dc[j][i].capid();
 	int soi = qie10dc[j][i].soi();
 
 	// store pulse information
 	float charge = adc2fC_QIE10[ adc ];
 
-	//-----------------------------------------------
-	//-- Compute the charge of SOI and the next BX --
-	//----------------------------------------------
-        if (_qie10Info.soi[j][i] != 0){
-		float PulseEnergy = qie10dc[j][i].adc() + qie10dc[j][i+1].adc();
-		SOIplusBX[j]->Fill( i , PulseEnergy);
-                PulseEnergy1D[j]->Fill(PulseEnergy);
-		}
 	//Fill the histograms
 	ADCspectrum[j]->Fill( adc );
 	Qspectrum[j]->Fill( charge );
 	TDCspectrum[j]->Fill( tdc );
-        TDCtrailing[j]->Fill( trail );
 	Qpulse[j]->Fill( i , charge );
 	Pulse[j]->Fill( i , adc );
-        TDCtrailVsBX[j]->Fill( i , trail );
 	TDCvsBX[j]->Fill( i , tdc );
 	PedVsCapID[j]->Fill( capid , charge );
 
-	//-------------------------------------------------
-	//--Create a profile for each "Qpulse" histogram --
-	//-------------------------------------------------
-	sprintf(QProfileName,"QProfile_%i)",j+1);
-        QProfile[j] = (TProfile*) Qpulse[j]->ProfileX( QProfileName, 1 , -1 , "s" );
-        QProfile[j]->GetYaxis()->SetTitle("Charge [fC]");
-        QProfile[j]->GetXaxis()->SetTitle("BX");
-        QProfile[j]->SetLineColor( i%4+1 );
-        QProfile[j]->SetMarkerColor( i%4+1 );
-        QProfile[j]->SetMarkerStyle( 8 );
-	//--------------------------------------------------
+	meanChargeMap->Fill( ieta , iphi , charge/10. );
+	meanChargeSquaredMap->Fill( ieta , iphi , charge*charge/10. );
 
 	_qie10Info.pulse[j][i] = charge;
 	_qie10Info.pulse_adc[j][i] = adc;
@@ -466,6 +431,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 
   _treeQIE10->Fill();
 
+  evtCount++;
 
   return;
 }
