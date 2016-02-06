@@ -303,6 +303,8 @@ void HFanalyzer::getData(const edm::Event &iEvent,
     
   for (int j=0; j < qie10dc.size(); j++){
 
+    QIE10DataFrame qie10df = static_cast<QIE10DataFrame>(qie10dc[j]);
+
     if (_verbosity>0){
       std::cout << "Printing raw dataframe" << std::endl;
       std::cout << qie10dc[j] << std::endl;
