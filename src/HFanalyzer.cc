@@ -176,7 +176,13 @@ private:
   vector<TH2F*> TDCtrailVsBX;           // 2D hist: TDC trailing edge vs. BX
   vector<TH2F*> PedVsCapID;   		// 2D hist: Pedestal vs. CapID
   vector<TH2F*> CapIDvsBX;
-  //  vector<TProfile*> QProfile;           // Profile of "Qpulse" histograms
+
+  // QIE8 
+  vector<TH1F*> ADCspectrum_QIE8;		// 1D hist: ADC values
+  vector<TH1F*> Qspectrum_QIE8;      	// 1D hist: charge in fC
+  vector<TH2F*> Pulse_QIE8;			// 2D hist: charge (non converted) vs. time sample (BX)
+  vector<TH2F*> Qpulse_QIE8;			// 2D hist: charge vs. time sample (BX)
+  vector<TH2F*> CapIDvsBX_QIE8;
 
 
   int numChannels;
@@ -191,6 +197,7 @@ private:
   virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
 
   edm::EDGetTokenT<HcalDataFrameContainer<QIE10DataFrame> > tok_QIE10DigiCollection_;
+  edm::EDGetTokenT<HFDigiCollection> hf_token;
   edm::Handle<QIE10DigiCollection> qie10DigiCollection;
   
   // ----------member data ---------------------------
@@ -214,8 +221,7 @@ HFanalyzer::HFanalyzer(const edm::ParameterSet& iConfig) :
 
 
   tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis"));
-
-  //now do what ever initialization is needed
+  hf_token = consumes<HFDigiCollection>(edm::InputTag("hcalDigis"));
 
   _file = new TFile(_outFileName.c_str(), "recreate");
   _file->mkdir("QIE10Data");
@@ -285,6 +291,22 @@ HFanalyzer::~HFanalyzer()
   //    QProfile[j]->Write();
   //  }// end loop over QProfile 
   
+  for( unsigned int j = 0 ; j < ADCspectrum_QIE8.size() ; j++ ){
+    ADCspectrum_QIE8[j]->Write();
+  }// end loop over ADCspectrum
+  for( unsigned int j = 0 ; j < Qspectrum_QIE8.size() ; j++ ){    
+    Qspectrum_QIE8[j]->Write();
+  }// end loop over Qspectrum
+  for( unsigned int j = 0 ; j < Pulse_QIE8.size() ; j++ ){    
+    Pulse_QIE8[j]->Write();
+  }// end loop over Pulse
+  for( unsigned int j = 0 ; j < Qpulse_QIE8.size() ; j++ ){    
+    Qpulse_QIE8[j]->Write();
+  }// end loop over Qpulse
+  for( unsigned int j = 0 ; j < CapIDvsBX_QIE8.size() ; j++ ){
+    CapIDvsBX_QIE8[j]->Write();
+  }
+
   _file->Write();
   _file->Close();
 
@@ -295,72 +317,161 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 {
   using namespace edm;
 
-
   //
   //  Extracting All the Collections containing useful Info
   iEvent.getByToken(tok_QIE10DigiCollection_,qie10DigiCollection);
   const QIE10DigiCollection& qie10dc=*(qie10DigiCollection);
+
   //  -----------------------------------------------------
 
-  if (_verbosity>0)
-    {
-      cout << "### Before Loop: " << endl;
-      cout << "### QIE10 Digis=" << qie10DigiCollection->size() << endl;
-
-    }
         
   // --------------------------
-  // --   QIE10 Information  --
+  // --   QIE8 Information  --
   // --------------------------
-    
-  char histoName[100];
-  //  char QProfileName[100];
 
-  if (_verbosity>0) std::cout << "Trying to access the qie collection" << std::endl;
-    
+  edm::Handle<HFDigiCollection> qie8dc;
+  iEvent.getByToken(hf_token, qie8dc);
+
+
+  if (_verbosity>0){
+      cout << "### Before Loop: " << endl;
+      cout << "### QIE8 Digis=" << qie8dc->size() << endl;
+  }
+
+  char histoName[100];
+  unsigned int numQIE8channels = 0 ;
+  if (qie8dc.isValid()){
+    for(HFDigiCollection::const_iterator qie8digi=qie8dc->begin();qie8digi!=qie8dc->end();qie8digi++){
+      numQIE8channels++;
+
+      // Extract info on detector location
+      HcalDetId hcaldetid = static_cast<HcalDetId>(qie8digi->id());
+      int ieta = hcaldetid.ieta();
+      int iphi = hcaldetid.iphi();
+      int depth = hcaldetid.depth();
+      
+      if( ADCspectrum.size() <= numQIE8channels ){
+	numChannels++;
+	sprintf(histoName,"ADCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	ADCspectrum_QIE8.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
+	
+	sprintf(histoName,"Qspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	Qspectrum_QIE8.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
+	
+	sprintf(histoName,"Qpulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	Qpulse_QIE8.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
+	
+	sprintf(histoName,"Pulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	Pulse_QIE8.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
+	
+	sprintf(histoName,"CapIDvsBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	CapIDvsBX_QIE8.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,40,-0.5,3.5));
+      }
+      
+      if (_verbosity>0){
+	std::cout << " ieta: " << ieta << "\n"
+		  << " iphi: " << iphi << "\n"
+		  << " depth: " << depth << std::endl;
+      }
+      
+      
+      // loop over the samples in the digi
+      int nTS = qie8digi->size();
+      
+      for(int i=0; i<nTS; ++i)
+	{
+
+	  if(_verbosity>1){
+	    std::cout << "TS: " << i << std::endl;
+	  }
+	  
+	  // j - QIE channel
+	  // i - time sample (TS)
+	  int adc = qie8digi->sample(i).adc();
+	  int capid = qie8digi->sample(i).capid();
+	  
+	  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	  // store pulse information
+	  // THIS NEEDS TO BE UPDATED AND IS ONLY 
+	  // BEING USED AS A PLACE HOLDER UNTIL THE
+	  // REAL LINEARIZATION CONSTANTS ARE DEFINED
+	  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	  float charge = adc2fC_QIE10[ adc ];
+	  
+	  if(_verbosity>3){
+	    std::cout << "filling histograms" << std::endl;
+	    std::cout << "ith channel: " << numQIE8channels << std::endl;
+	  }
+	  //Fill the histograms
+	  ADCspectrum_QIE8[numQIE8channels-1]->Fill( adc );
+	  Qspectrum_QIE8[numQIE8channels-1]->Fill( charge );
+	  Qpulse_QIE8[numQIE8channels-1]->Fill( i , charge );
+	  Pulse_QIE8[numQIE8channels-1]->Fill( i , adc );
+	  CapIDvsBX_QIE8[numQIE8channels-1]->Fill ( i , capid );
+
+	  if (_verbosity>0)
+	    std::cout << "Sample " << i << ": ADC=" << adc << " Charge=" << charge << "fC" << " Capid=" << capid << std::endl;
+	}// end loop over TS
+    }// end loop over qie8 data
+  }// end if-valid statement
+
+
+  // --------------------------
+  // --   QIE8 Information  --
+  // --------------------------
+  if (_verbosity>0){
+      cout << "### Before Loop: " << endl;
+      cout << "### QIE10 Digis=" << qie10dc.size() << endl;
+  }
+
   for (unsigned int j=0; j < qie10dc.size(); j++){
 
     QIE10DataFrame qie10df = static_cast<QIE10DataFrame>(qie10dc[j]);
+  
+    // Extract info on detector location
+    DetId detid = qie10df.detid();
+    HcalDetId hcaldetid = HcalDetId(detid);
+    int ieta = hcaldetid.ieta();
+    int iphi = hcaldetid.iphi();
+    int depth = hcaldetid.depth();
  
     if( ADCspectrum.size() <= j ){
-	sprintf(histoName,"ADCspectrum_%i",numChannels);
-	numChannels++;
-    	ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
-   	
-	sprintf(histoName,"Qspectrum_%i",numChannels);
-      	Qspectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
+      numChannels++;
+      sprintf(histoName,"ADCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
+      
+      sprintf(histoName,"Qspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      Qspectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
 
-      	sprintf(histoName,"TDCspectrum_%i",numChannels);
-      	TDCspectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
+      sprintf(histoName,"TDCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      TDCspectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
 
-	sprintf(histoName,"TDCtrailing_%i",numChannels);
-     	TDCtrailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
+      sprintf(histoName,"TDCtrailSpectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      TDCtrailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
 
-  	sprintf(histoName,"Qpulse_%i",numChannels);
-	Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
+      sprintf(histoName,"Qpulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
+      
+      sprintf(histoName,"Pulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      Pulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
 
-      	sprintf(histoName,"Pulse_%i",numChannels);
-      	Pulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
+      sprintf(histoName,"SOIplusBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      SOIplusBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,30,0.,100.));
+	
+      sprintf(histoName,"TDCtrailVsBx_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      TDCtrailVsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,100));
+      
+      sprintf(histoName,"TDCVsBx_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      TDCvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,63.5));      
 
-	sprintf(histoName,"SOIplusBX_%i",numChannels);
-        SOIplusBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,30,0.,100.));
+      sprintf(histoName,"PedVsCapID_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      PedVsCapID.push_back(new TH2F(histoName,histoName,40,-0.5,3.5,30,0.0,90.0));      
 
-        sprintf(histoName,"TDCtrailVsBX_%i",numChannels);
-        TDCtrailVsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,100));
+      sprintf(histoName,"PulseEnergy1D_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      PulseEnergy1D.push_back(new TH1F(histoName,histoName,30,0.,100.));
 
-        sprintf(histoName,"TDCvsBX_%i",numChannels);
-      	TDCvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,63.5));      
-
-      	sprintf(histoName,"PedVsCapID_%i",numChannels);
-      	PedVsCapID.push_back(new TH2F(histoName,histoName,40,-0.5,3.5,30,0.0,90.0));      
-
-	sprintf(histoName,"PulseEnergy1D_%i",numChannels);
-        PulseEnergy1D.push_back(new TH1F(histoName,histoName,30,0.,100.));
-
-	sprintf(histoName,"CapIDvsBX_%i",numChannels);
-        CapIDvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,40,-0.5,3.5));
-
-	//        QProfile.push_back(new TProfile(QProfileName,QProfileName,10,-0.5,9.5,0,100));
+      sprintf(histoName,"CapIDvsBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      CapIDvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,40,-0.5,3.5));
 
     }
 
@@ -371,13 +482,6 @@ void HFanalyzer::getData(const edm::Event &iEvent,
       std::cout << "Printing content of samples() method" << std::endl;
       std::cout << qie10df.samples() << std::endl;
     }
-  
-    // Extract info on detector location
-    DetId detid = qie10df.detid();
-    HcalDetId hcaldetid = HcalDetId(detid);
-    int ieta = hcaldetid.ieta();
-    int iphi = hcaldetid.iphi();
-    int depth = hcaldetid.depth();
         
     if (_verbosity>0){
       std::cout << " detid: " << detid.rawId() << std::endl;

@@ -24,8 +24,8 @@ runNumber = sys.argv[2]
 process.source = cms.Source("HcalTBSource",
     fileNames = cms.untracked.vstring(
         #'file:/afs/cern.ch/user/e/ealvesco/public/B904_Integration_'+runNumber+'.root'
-        'file:/afs/cern.ch/user/w/whitbeck/workPublic/B904_Integration_'+runNumber+'.root'
-        #'file:/afs/cern.ch/user/y/yanchu/work/public/B904_Integration_'+runNumber+'.root'
+        #'file:/afs/cern.ch/user/w/whitbeck/workPublic/B904_Integration_'+runNumber+'.root'
+        'file:/afs/cern.ch/user/y/yanchu/work/public/cms904/B904_Integration_'+runNumber+'.root'
     )
 )
 
@@ -52,9 +52,9 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    HcalFirstFED = cms.untracked.int32(928),
                                    ComplainEmptyData = cms.untracked.bool(False),
                                    #       UnpackCalib = cms.untracked.bool(True),
-                                   FEDs = cms.untracked.vint32(928,702),
+                                   FEDs = cms.untracked.vint32(928,930),
                                    firstSample = cms.int32(0),
-                                   lastSample = cms.int32(14)
+                                   lastSample = cms.int32(10)
                                    )
 
 
@@ -69,6 +69,7 @@ process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
 process.output = cms.OutputModule(
         'PoolOutputModule',
         fileName = cms.untracked.string('HFanalysis_'+runNumber+'.root')
+
 )
 
 process.load('Configuration.Geometry.GeometryIdeal_cff')
@@ -84,7 +85,10 @@ process.es_ascii = cms.ESSource('HcalTextCalibrations',
         input = cms.VPSet(
                cms.PSet(
                 object = cms.string('ElectronicsMap'),
-                file = cms.FileInPath('HFcommissioning/Analysis/test/EMAP-QIE10.txt')
+                #file = cms.FileInPath('HFcommissioning/Analysis/test/PMTmap_v2_withQIEwinchesterMappingFixed.txt')
+                #file = cms.FileInPath('HFcommissioning/Analysis/test/mixedQIE8QIE10emap.txt')
+                #file = cms.FileInPath('HFcommissioning/Analysis/test/forMarcelo.txt')
+                file = cms.FileInPath('HFcommissioning/Analysis/test/split_PMT_Box_Mapper_UXCat904emap.txt')
                )
         )
 )
@@ -94,7 +98,7 @@ process.es_prefer = cms.ESPrefer('HcalTextCalibrations', 'es_ascii')
 process.dump = cms.EDAnalyzer("HcalDigiDump")
 
 process.p = cms.Path(process.hcalDigis
-                     *process.dump
+                     #*process.dump
                      *process.hcalAnalyzer
                      )
 process.outpath = cms.EndPath(process.output)

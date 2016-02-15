@@ -21,14 +21,17 @@ if len(sys.argv)!= 3:
 #
 runNumber = sys.argv[2]
 
-process.source = cms.Source("HcalTBSource",
-    fileNames = cms.untracked.vstring(
+#process.source = cms.Source("HcalTBSource",
+#    fileNames = cms.untracked.vstring(
         #'file:/afs/cern.ch/work/e/ealvesco/public/B904_Integration_'+runNumber+'.root'
         #'file:/afs/cern.ch/user/w/whitbeck/workPublic/B904_Integration_'+runNumber+'.root'
         #'file:/afs/cern.ch/user/y/yanchu/work/public/cms904/B904_Integration_'+runNumber+'.root'
-        'file:/afs/cern.ch/user/w/whitbeck/workPublic/USC_'+runNumber+'.root'
-        )
-)
+        #'file:/afs/cern.ch/user/w/whitbeck/workPublic/USC_'+runNumber+'.root',
+#        'root://cmsxrootd.fnal.gov///store/hidata/HIRun2015/MinimumBias/RAW/v1/000/263/244/00000/BC8B4F3A-0C9A-E511-AFBA-02163E0142D2.root'
+#        )
+#)
+
+process.load("HFcommissioning.Analysis.HIdata_cfi")
 
 process.options = cms.untracked.PSet(
         wantSummary = cms.untracked.bool(False)
