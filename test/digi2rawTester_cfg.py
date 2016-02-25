@@ -3,7 +3,7 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process("H2TestBeam")
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
-process.MessageLogger.cerr.FwkReport.reportEvery = 100
+process.MessageLogger.cerr.FwkReport.reportEvery = 1
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000) )
 
@@ -47,7 +47,7 @@ process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
         Verbosity = cms.untracked.int32(0)
 )
 
-process.digi2raw = cms.EDAnalyzer("digi2rawTester",
+process.digi2raw = cms.EDProducer("digi2rawTester",
                                   Verbosity = cms.untracked.int32(10)
                                   )
 

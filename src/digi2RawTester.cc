@@ -1,5 +1,5 @@
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/Framework/interface/ESHandle.h"
@@ -21,6 +21,7 @@
 #include "DataFormats/FEDRawData/interface/FEDTrailer.h"
 #include "DataFormats/FEDRawData/interface/FEDNumbering.h"
 #include "DataFormats/FEDRawData/interface/FEDRawData.h"
+#include "FWCore/Utilities/interface/CRC16.h"
 
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
@@ -29,17 +30,6 @@
 #include "CalibFormats/HcalObjects/interface/HcalCalibrations.h"
 #include "CalibFormats/HcalObjects/interface/HcalCoderDb.h"
 
-#include "HFcommissioning/Analysis/interface/ADC_Conversion.h"
-
-#include "TH1D.h"
-#include "TH2D.h"
-#include "TGraph.h"
-#include "TCanvas.h"
-#include "TTree.h"
-#include "TProfile.h"
-#include "TFile.h"
-#include "TSystem.h"
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -47,7 +37,7 @@
 
 using namespace std;
 
-class digi2rawTester : public edm::EDAnalyzer {
+class digi2rawTester : public edm::EDProducer {
 public:
   explicit digi2rawTester(const edm::ParameterSet&);
   ~digi2rawTester();
@@ -56,7 +46,7 @@ public:
 
 private:
   virtual void beginJob() ;
-  virtual void analyze(const edm::Event&, const edm::EventSetup&);
+  virtual void produce(edm::Event&, const edm::EventSetup&);
   void getData(const edm::Event&, const edm::EventSetup&);
   virtual void endJob() ;
 
@@ -76,32 +66,44 @@ digi2rawTester::digi2rawTester(const edm::ParameterSet& iConfig) :
   _verbosity(iConfig.getUntrackedParameter<int>("Verbosity"))
 {
 
+  std::cout << "digi2rawTester::digi2rawTester" << std::endl;
+
+  produces<FEDRawDataCollection>("");
   tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis"));
 
 }
 
 
-digi2rawTester::~digi2rawTester(){}
+digi2rawTester::~digi2rawTester(){ std::cout << "digi2rawTester::~digi2rawTester" << std::endl;}
 
-void digi2rawTester::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup){
+void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
   using namespace edm;
+
+  //collection to be inserted into event
+  std::auto_ptr<FEDRawDataCollection> fed_buffers(new FEDRawDataCollection());
 
   //
   //  Extracting All the Collections containing useful Info
   iEvent.getByToken(tok_QIE10DigiCollection_,qie10DigiCollection);
   const QIE10DigiCollection& qie10dc=*(qie10DigiCollection);
 
+  int FEDIDmin = FEDNumbering::MINHCALuTCAFEDID;
+  int FEDIDmax = FEDNumbering::MAXHCALuTCAFEDID;
+
   typedef vector<uint16_t> uhtrData;
   typedef pair<int,int>    UHTRLoc;
   typedef map<UHTRLoc,uhtrData> UHTRMap;
-
+  typedef map<int,FEDRawData> FEDMap;
   UHTRMap uhtrMap;
   UHTRLoc uhtrLoc;
+  FEDMap fedMap;
 
   for (unsigned int j=0; j < qie10dc.size(); j++){
 
+    std::cout << "j: " << j << std::endl;
+
     QIE10DataFrame qie10df = static_cast<QIE10DataFrame>(qie10dc[j]);
-  
+
     // Extract info on detector location
     DetId detid = qie10df.detid();
     HcalElectronicsId eid(detid.rawId());
@@ -109,6 +111,7 @@ void digi2rawTester::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
     int uhtrCrate = eid.crateId();
     uhtrLoc.first = uhtrCrate;
     uhtrLoc.second = uhtrSlot;
+
     if( uhtrMap.find(uhtrLoc) == uhtrMap.end() ){ 
       // uhtr not found
       // initialize vector of 16-bit words
@@ -117,9 +120,7 @@ void digi2rawTester::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
       // build header -- some information will be updated at the end
       uhtrMap[uhtrLoc][4] = (4<<12)|(uhtrSlot<<8)|(uhtrCrate); // n-presampels hardcoded for testing purposes
       uhtrMap[uhtrLoc][5] = 1041;// hardcoded for testing purposes
-      uhtrMap[uhtrLoc][6] = 0560;// hardcoded for testing purposes
-      
-      
+      uhtrMap[uhtrLoc][6] = 0560;// hardcoded for testing purposes      
 
     }
 
@@ -155,9 +156,10 @@ void digi2rawTester::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
     }// end loop over dataframe words
 
   }//end loop over digis
-
+  
+  // what about dual FED readout?
   for( UHTRMap::iterator m = uhtrMap.begin() ; m != uhtrMap.end() ; ++m){
-    
+
     // add trailer to uhtrData
     uint64_t uhtr_size = m->second.size()+4;
     m->second.push_back( uhtr_size & 0xFF );
@@ -171,16 +173,63 @@ void digi2rawTester::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
     if( _verbosity>0 ){
       for( unsigned int i = 0 ; i < m->second.size() ; i++ ){
-	cout << "raw from uhtr: " << std::hex << m->second[i] << endl;
-	
+	std::cout << "raw from uhtr: " << std::hex << m->second[i] << std::endl;	
       }
     }
 
-    //initialize HcalUHTRData object
-    //HcalUHTRData uhtr(uhtrData[0],static_cast<int>(uhtr_size));
+    int fedId = FEDIDmin + m->first.first;
+    //initialize FEDRawData object
+    fedMap[fedId]=FEDRawData(m->second.size()*2); 
+
+    int fedWord;
+    for( unsigned int iWord = 0 ; iWord < m->second.size() ; iWord++){
+
+      //fed data is unsigned char (8-bits)
+      //uhtr data is 16-bit ints
+      fedWord = iWord*2 ;
+      if( _verbosity>5 )
+	std::cout << "fed word: " << std::dec << fedWord << std::endl;
+      //save the first 8 bits of uhtr data into fedWord
+      fedMap[fedId].data()[fedWord] = m->second[iWord]&0xFF;
+      //offset fed word and save last 8 bits of uhtr data
+      fedMap[fedId].data()[fedWord+1] = (m->second[iWord]>>8)&0xFF;
+    }
 
   }// end loop over uhtr containers
+
+  for( FEDMap::iterator fed = fedMap.begin() ; fed != fedMap.end() ; ++fed ){
+
+    // need to fix for cases where there are two FEDs per crate...
+    int fedId = fed->first;
+
+    if( _verbosity>5 )
+      std::cout << "FED ID: " << std::dec << fedId << std::endl;
+ 
+    if( fedId < FEDIDmin || fedId > FEDIDmax ){
+      std::cout << "FED ID out of range" << std::endl;
+    }
+
+    FEDRawData& fedRawData = fed_buffers->FEDData(fedId);
+    fedRawData = fed->second;
+    
+    if( _verbosity>0 )
+      std::cout << "building FED header" << std::endl;
+    FEDHeader hcalFEDHeader(fedRawData.data());
+    hcalFEDHeader.set(fedRawData.data(), 0, iEvent.id().event(), 0, fedId);
+    if( _verbosity>0 )
+      std::cout << "building FED trailer" << std::endl;
+    FEDTrailer hcalFEDTrailer(fedRawData.data()+(fedRawData.size()-8));
+    hcalFEDTrailer.set(fedRawData.data()+(fedRawData.size()-8), fedRawData.size()/8, evf::compute_crc(fedRawData.data(),fedRawData.size()), 0, 0);
+
+  }// end loop over FEDs with data
+
+  if( _verbosity > 0 ) 
+    std::cout << "putting FEDRawDataCollection in event" << std::endl;
+
+  iEvent.put(fed_buffers);
   
+  std::cout << "check mate" << std::endl;
+
 }
 
 
@@ -188,7 +237,11 @@ void digi2rawTester::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 void digi2rawTester::beginJob(){}
 
 // ------------ method called once each job just after ending the event loop  ------------
-void digi2rawTester::endJob(){}
+void digi2rawTester::endJob(){
+
+  std::cout << "digi2rawTester::endJob" << std::endl;
+
+}
 
 // ------------ method called when starting to processes a run  ------------
 void digi2rawTester::beginRun(edm::Run const&, edm::EventSetup const&){}
