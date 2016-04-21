@@ -13,16 +13,6 @@ process.options = cms.untracked.PSet(
         wantSummary = cms.untracked.bool(False)
         )
 
-process.tbunpack = cms.EDProducer("HcalTBObjectUnpacker",
-        IncludeUnmatchedHits = cms.untracked.bool(False),
-        ConfigurationFile=cms.untracked.string('HFcommissioning/Analysis/test/configQADCTDC.txt'),
-        HcalSlowDataFED = cms.untracked.int32(3),
-        HcalTriggerFED = cms.untracked.int32(1),
-        HcalTDCFED = cms.untracked.int32(8),
-        HcalQADCFED = cms.untracked.int32(8),
-        fedRawDataCollectionTag = cms.InputTag('source')
-)
-
 process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    FilterDataQuality = cms.bool(False),
                                    InputLabel = cms.InputTag('source'),
@@ -30,7 +20,7 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    ComplainEmptyData = cms.untracked.bool(False),
                                    FEDs = cms.untracked.vint32(1132),
                                    firstSample = cms.int32(0),
-                                   lastSample = cms.int32(14)
+                                   lastSample = cms.int32(10)
                                    )
 
 
