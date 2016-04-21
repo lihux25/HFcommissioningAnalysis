@@ -15,7 +15,7 @@ process.options = cms.untracked.PSet(
 
 process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    FilterDataQuality = cms.bool(False),
-                                   InputLabel = cms.InputTag('source'),
+                                   InputLabel = cms.InputTag('rawDataCollector'),
                                    HcalFirstFED = cms.untracked.int32(1132),
                                    ComplainEmptyData = cms.untracked.bool(False),
                                    FEDs = cms.untracked.vint32(1132),
