@@ -5,9 +5,9 @@ process = cms.Process("H2TestBeam")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100) )
 
-process.load("HFcommissioning.Analysis.firstBeams_cfi")
+process.load("HFcommissioning.Analysis.run270899_cfi")
 
 process.options = cms.untracked.PSet(
         wantSummary = cms.untracked.bool(False)
@@ -23,10 +23,11 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    lastSample = cms.int32(10)
                                    )
 
+process.load("EventFilter.HcalRawToDigi.HcalRawToDigi_cfi")
 
 process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
                                       OutFileName = cms.untracked.string('HFanalysisTree_validation.root'),
-                                      Verbosity = cms.untracked.int32(0),
+                                      Verbosity = cms.untracked.int32(10),
                                       digiCollection = cms.untracked.string('hcalDigis')
 )
 
