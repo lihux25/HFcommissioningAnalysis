@@ -1,11 +1,11 @@
 import FWCore.ParameterSet.Config as cms
 
-process = cms.Process("H2TestBeam")
+process = cms.Process("digi2rawTesting")
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
-process.MessageLogger.cerr.FwkReport.reportEvery = 1
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.source = cms.Source("HcalTBSource",
     fileNames = cms.untracked.vstring(
@@ -16,16 +16,6 @@ process.source = cms.Source("HcalTBSource",
 process.options = cms.untracked.PSet(
         wantSummary = cms.untracked.bool(False)
         )
-
-process.tbunpack = cms.EDProducer("HcalTBObjectUnpacker",
-        IncludeUnmatchedHits = cms.untracked.bool(False),
-        ConfigurationFile=cms.untracked.string('HFcommissioning/Analysis/test/configQADCTDC.txt'),
-        HcalSlowDataFED = cms.untracked.int32(3),
-        HcalTriggerFED = cms.untracked.int32(1),
-        HcalTDCFED = cms.untracked.int32(8),
-        HcalQADCFED = cms.untracked.int32(8),
-        fedRawDataCollectionTag = cms.InputTag('source')
-)
 
 process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    #       UnpackHF = cms.untracked.bool(True),
@@ -38,18 +28,36 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    #       UnpackCalib = cms.untracked.bool(True),
                                    FEDs = cms.untracked.vint32(932),
                                    firstSample = cms.int32(0),
-                                   lastSample = cms.int32(14)
+                                   lastSample = cms.int32(9)
                                    )
 
+process.digi2raw = cms.EDProducer("digi2rawTester",
+                                  Verbosity = cms.untracked.int32(0)
+                                  )
+
+process.hcalDigi2rawDigi = cms.EDProducer("HcalRawToDigi",
+                                          FilterDataQuality = cms.bool(False),
+                                          InputLabel = cms.InputTag('digi2raw'),
+                                          HcalFirstFED = cms.untracked.int32(1153),
+                                          ComplainEmptyData = cms.untracked.bool(False),
+                                          #       UnpackCalib = cms.untracked.bool(True),
+                                          FEDs = cms.untracked.vint32(1153),
+                                          firstSample = cms.int32(0),
+                                          lastSample = cms.int32(9),
+                                          silent = cms.untracked.bool(False)
+                                   )
 
 process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
-        OutFileName = cms.untracked.string('HFanalysisTree_validation.root'),
-        Verbosity = cms.untracked.int32(0)
+                                       OutFileName = cms.untracked.string('HFanalysisTree_raw2digi.root'),
+                                       Verbosity = cms.untracked.int32(0),
+                                       digiCollection = cms.untracked.string('hcalDigis')
 )
 
-process.digi2raw = cms.EDProducer("digi2rawTester",
-                                  Verbosity = cms.untracked.int32(10)
-                                  )
+process.hcalAnalyzer2 = cms.EDAnalyzer('HFanalyzer',
+                                       OutFileName = cms.untracked.string('HFanalysisTree_digi2rawTest.root'),
+                                       Verbosity = cms.untracked.int32(0),
+                                       digiCollection = cms.untracked.string('hcalDigi2rawDigi')
+)
 
 process.load('Configuration.Geometry.GeometryIdeal_cff')
 
@@ -68,11 +76,20 @@ process.es_ascii = cms.ESSource('HcalTextCalibrations',
                )
         )
 )
-
 process.es_prefer = cms.ESPrefer('HcalTextCalibrations', 'es_ascii')
 
-process.p = cms.Path(process.hcalDigis
-                     *process.hcalAnalyzer
-                     *process.digi2raw
-                     )
+#
+#   For Debugging: Create a Pool Output Module
+#
+process.output = cms.OutputModule(
+        'PoolOutputModule',
+        fileName = cms.untracked.string('digi2Raw.root')
+)
 
+process.p = cms.Path(process.hcalDigis
+                     *process.digi2raw
+                     *process.hcalDigi2rawDigi
+                     #*process.hcalAnalyzer
+                     *process.hcalAnalyzer2
+                     )
+process.outpath = cms.EndPath(process.output)

@@ -43,8 +43,9 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
 
 
 process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
-        OutFileName = cms.untracked.string('HFanalysisTree_validation.root'),
-        Verbosity = cms.untracked.int32(0)
+                                      OutFileName = cms.untracked.string('HFanalysisTree_validation.root'),
+                                      Verbosity = cms.untracked.int32(0),
+                                      digiCollection = cms.untracked.string('hcalDigis')
 )
 
 #

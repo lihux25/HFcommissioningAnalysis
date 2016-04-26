@@ -15,6 +15,8 @@
 #include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
 #include "DataFormats/HcalDetId/interface/HcalCalibDetId.h"
 
+#include "CondFormats/HcalObjects/interface/HcalElectronicsMap.h"
+
 #include "DataFormats/Common/interface/Handle.h"
 #include "DataFormats/FEDRawData/interface/FEDRawDataCollection.h"
 #include "DataFormats/FEDRawData/interface/FEDHeader.h"
@@ -29,6 +31,8 @@
 #include "CalibFormats/HcalObjects/interface/HcalDbRecord.h"
 #include "CalibFormats/HcalObjects/interface/HcalCalibrations.h"
 #include "CalibFormats/HcalObjects/interface/HcalCoderDb.h"
+
+#include "PackerHelp.cc"
 
 #include <iostream>
 #include <fstream>
@@ -51,6 +55,7 @@ private:
   virtual void endJob() ;
 
   int _verbosity;
+  std::string electronicsMapLabel_;
 
   virtual void beginRun(edm::Run const&, edm::EventSetup const&);
   virtual void endRun(edm::Run const&, edm::EventSetup const&);
@@ -59,159 +64,132 @@ private:
 
   edm::EDGetTokenT<HcalDataFrameContainer<QIE10DataFrame> > tok_QIE10DigiCollection_;
   edm::Handle<QIE10DigiCollection> qie10DigiCollection;
-  
+  edm::EDGetTokenT<HcalDataFrameContainer<QIE11DataFrame> > tok_QIE11DigiCollection_;
+  edm::Handle<QIE11DigiCollection> qie11DigiCollection;
+
+  /*
+  edm::EDGetTokenT<HBHEDigiCollection> tok_HBHEDigiCollection_;
+  edm::Handle<HBHEDigiCollection> hbheDigiCollection;
+  edm::EDGetTokenT<HFDigiCollection> tok_HFDigiCollection_;
+  edm::Handle<HFDigiCollection> hfDigiCollection;
+  edm::EDGetTokenT<HODigiCollection> tok_HODigiCollection_;
+  edm::Handle<HODigiCollection> hoDigiCollection;
+  */
 };
 
 digi2rawTester::digi2rawTester(const edm::ParameterSet& iConfig) :
-  _verbosity(iConfig.getUntrackedParameter<int>("Verbosity"))
+  _verbosity(iConfig.getUntrackedParameter<int>("Verbosity")),
+  electronicsMapLabel_(iConfig.getUntrackedParameter<std::string>("ElectronicsMap",""))
 {
-
-  std::cout << "digi2rawTester::digi2rawTester" << std::endl;
-
   produces<FEDRawDataCollection>("");
   tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis"));
-
+  tok_QIE11DigiCollection_ = consumes<HcalDataFrameContainer<QIE11DataFrame> >(edm::InputTag("hcalDigis"));
+  /*
+  tok_HBHEDigiCollection_ = consumes<HBHEDigiCollection >(edm::InputTag("hcalDigis"));
+  tok_HFDigiCollection_ = consumes<HFDigiCollection >(edm::InputTag("hcalDigis"));
+  tok_HODigiCollection_ = consumes<HODigiCollection >(edm::InputTag("hcalDigis"));
+  */
 }
 
-
-digi2rawTester::~digi2rawTester(){ std::cout << "digi2rawTester::~digi2rawTester" << std::endl;}
+digi2rawTester::~digi2rawTester(){}
 
 void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
   using namespace edm;
 
+  edm::ESHandle<HcalDbService> pSetup;
+  iSetup.get<HcalDbRecord>().get( pSetup );
+  edm::ESHandle<HcalElectronicsMap> item;
+  iSetup.get<HcalElectronicsMapRcd>().get(electronicsMapLabel_,item);
+  const HcalElectronicsMap* readoutMap = item.product();
+
   //collection to be inserted into event
   std::auto_ptr<FEDRawDataCollection> fed_buffers(new FEDRawDataCollection());
-
+  
   //
   //  Extracting All the Collections containing useful Info
   iEvent.getByToken(tok_QIE10DigiCollection_,qie10DigiCollection);
   const QIE10DigiCollection& qie10dc=*(qie10DigiCollection);
+  iEvent.getByToken(tok_QIE11DigiCollection_,qie11DigiCollection);
+  const QIE11DigiCollection& qie11dc=*(qie11DigiCollection);
+  /*
+  iEvent.getByToken(tok_HBHEDigiCollection_,hbheDigiCollection);
+  const HBHEDigiCollection& hbhedc=*(hbheDigiCollection);
+  iEvent.getByToken(tok_HFDigiCollection_,hfDigiCollection);
+  const HFDigiCollection& hfdc=*(hfDigiCollection);
+  iEvent.getByToken(tok_HODigiCollection_,hoDigiCollection);
+  const QIE10DigiCollection& hodc=*(hoDigiCollection);
+  */
+  /* QUESTION: what about dual FED readout? */
+  /* QUESTION: what do I do if the number of 16-bit words
+               are not divisible by 4? -- these need to
+	       fit into the 64-bit words of the FEDRawDataFormat */
 
-  int FEDIDmin = FEDNumbering::MINHCALuTCAFEDID;
-  int FEDIDmax = FEDNumbering::MAXHCALuTCAFEDID;
+  // first argument is the fedid (minFEDID+crateId)
+  map<int,HCalFED*> fedMap;
 
-  typedef vector<uint16_t> uhtrData;
-  typedef pair<int,int>    UHTRLoc;
-  typedef map<UHTRLoc,uhtrData> UHTRMap;
-  typedef map<int,FEDRawData> FEDMap;
-  UHTRMap uhtrMap;
-  UHTRLoc uhtrLoc;
-  FEDMap fedMap;
-
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  // QIE10 precision data
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  uHTRhelper<QIE10DataFrame> uhtrs_qie10;
+  // loop over each digi and allocate memory for each
   for (unsigned int j=0; j < qie10dc.size(); j++){
-
-    std::cout << "j: " << j << std::endl;
-
     QIE10DataFrame qie10df = static_cast<QIE10DataFrame>(qie10dc[j]);
-
-    // Extract info on detector location
-    DetId detid = qie10df.detid();
-    HcalElectronicsId eid(detid.rawId());
-    int uhtrSlot = eid.slot();
-    int uhtrCrate = eid.crateId();
-    uhtrLoc.first = uhtrCrate;
-    uhtrLoc.second = uhtrSlot;
-
-    if( uhtrMap.find(uhtrLoc) == uhtrMap.end() ){ 
-      // uhtr not found
-      // initialize vector of 16-bit words
-      uhtrMap[uhtrLoc] = uhtrData(8);
-      
-      // build header -- some information will be updated at the end
-      uhtrMap[uhtrLoc][4] = (4<<12)|(uhtrSlot<<8)|(uhtrCrate); // n-presampels hardcoded for testing purposes
-      uhtrMap[uhtrLoc][5] = 1041;// hardcoded for testing purposes
-      uhtrMap[uhtrLoc][6] = 0560;// hardcoded for testing purposes      
-
+    if( ! uhtrs_qie10.exist(qie10df , *readoutMap ) ){
+      uhtrs_qie10.newUHTR( qie10df , *readoutMap );
     }
+    uhtrs_qie10.addChannel(qie10df,*readoutMap,_verbosity);
+  }
+  // loop over each uHTR and format data
+  for( UHTRMap::iterator uhtr = uhtrs_qie10.uhtrs.begin() ; uhtr != uhtrs_qie10.uhtrs.end() ; ++uhtr){
 
-    for( int i = 0 ; i < qie10df.samples()&&_verbosity>0 ; i++){
-
-      int adc = qie10df[i].adc();
-      int tdc = qie10df[i].le_tdc();
-      int trail = qie10df[i].te_tdc();
-      int capid = qie10df[i].capid();
-      int soi = qie10df[i].soi();
-
-      if (_verbosity>0){
-	std::cout 
-	  << "Sample " << i 
-	  << ": ADC=" << adc 
-	  << " TDC=" << tdc 
-	  << " Trail=" << trail 
-	  << " Capid=" << capid
-	  << " SOI=" << soi 
-	  << std::endl;
-      }
+    uhtrs_qie10.finalizeHeadTail(&(uhtr->second),_verbosity);
+    int fedId = FEDNumbering::MINHCALuTCAFEDID + uhtrs_qie10.getCrate(uhtr->first); // get crateId
+    if( fedMap.find(fedId) == fedMap.end() ){
+      /* QUESTION: where should the orbit number come from? */
+      fedMap[fedId] = new HCalFED(fedId);
     }
-
-    // loop over words in dataframe (2 per sample)
-    for(edm::DataFrame::iterator dfi=qie10df.begin() ; dfi!=qie10df.end(); ++dfi){
-      
-      if (_verbosity>0){
-	std::cout << "raw from digi: " << std::hex << dfi[1] << endl; 
-      }
-      // push data into uhtr data container
-      uhtrMap[uhtrLoc].push_back(dfi[1]);
-
-    }// end loop over dataframe words
-
-  }//end loop over digis
-  
-  // what about dual FED readout?
-  for( UHTRMap::iterator m = uhtrMap.begin() ; m != uhtrMap.end() ; ++m){
-
-    // add trailer to uhtrData
-    uint64_t uhtr_size = m->second.size()+4;
-    m->second.push_back( uhtr_size & 0xFF );
-    m->second.push_back( (uhtr_size>>16) & 0xF );
-    m->second.push_back( 0 );
-    m->second.push_back( 0 );
-    
-    // set size in header
-    m->second[0] = uhtr_size & 0xFF ;
-    m->second[1] = m->second[1] |= (uhtr_size>>16) & 0xF ; 
-
-    if( _verbosity>0 ){
-      for( unsigned int i = 0 ; i < m->second.size() ; i++ ){
-	std::cout << "raw from uhtr: " << std::hex << m->second[i] << std::endl;	
-      }
-    }
-
-    int fedId = FEDIDmin + m->first.first;
-    //initialize FEDRawData object
-    fedMap[fedId]=FEDRawData(m->second.size()*2); 
-
-    int fedWord;
-    for( unsigned int iWord = 0 ; iWord < m->second.size() ; iWord++){
-
-      //fed data is unsigned char (8-bits)
-      //uhtr data is 16-bit ints
-      fedWord = iWord*2 ;
-      if( _verbosity>5 )
-	std::cout << "fed word: " << std::dec << fedWord << std::endl;
-      //save the first 8 bits of uhtr data into fedWord
-      fedMap[fedId].data()[fedWord] = m->second[iWord]&0xFF;
-      //offset fed word and save last 8 bits of uhtr data
-      fedMap[fedId].data()[fedWord+1] = (m->second[iWord]>>8)&0xFF;
-    }
-
+    fedMap[fedId]->addUHTR(uhtr->second,uhtrs_qie10.getCrate(uhtr->first),uhtrs_qie10.getSlot(uhtr->first));
   }// end loop over uhtr containers
 
-  for( FEDMap::iterator fed = fedMap.begin() ; fed != fedMap.end() ; ++fed ){
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  // QIE11 precision data
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  uHTRhelper<QIE11DataFrame> uhtrs_qie11;
+  // loop over each digi and allocate memory for each
+  for (unsigned int j=0; j < qie11dc.size(); j++){
+    QIE11DataFrame qie11df = static_cast<QIE11DataFrame>(qie11dc[j]);
+    if( ! uhtrs_qie11.exist(qie11df , *readoutMap ) ){
+      uhtrs_qie11.newUHTR( qie11df , *readoutMap );
+    }
+    uhtrs_qie11.addChannel(qie11df,*readoutMap,_verbosity);
+  }
+  // loop over each uHTR and format data
+  for( UHTRMap::iterator uhtr = uhtrs_qie11.uhtrs.begin() ; uhtr != uhtrs_qie11.uhtrs.end() ; ++uhtr){
 
-    // need to fix for cases where there are two FEDs per crate...
+    uhtrs_qie11.finalizeHeadTail(&(uhtr->second),_verbosity);
+    int fedId = FEDNumbering::MINHCALuTCAFEDID + uhtrs_qie11.getCrate(uhtr->first); // get crateId
+    if( fedMap.find(fedId) == fedMap.end() ){
+      /* QUESTION: where should the orbit number come from? */
+      fedMap[fedId] = new HCalFED(fedId);
+    }
+    fedMap[fedId]->addUHTR(uhtr->second,uhtrs_qie11.getCrate(uhtr->first),uhtrs_qie11.getSlot(uhtr->first));
+  }// end loop over uhtr containers
+
+  
+  /* ------------------------------------------------------
+     ------------------------------------------------------
+           putting together the FEDRawDataCollection
+     ------------------------------------------------------
+     ------------------------------------------------------ */
+  for( map<int,HCalFED*>::iterator fed = fedMap.begin() ; fed != fedMap.end() ; ++fed ){
+
     int fedId = fed->first;
 
-    if( _verbosity>5 )
-      std::cout << "FED ID: " << std::dec << fedId << std::endl;
- 
-    if( fedId < FEDIDmin || fedId > FEDIDmax ){
-      std::cout << "FED ID out of range" << std::endl;
-    }
-
+    FEDRawData* rawData =  fed->second->formatFEDdata(); // fed->second.fedData;
     FEDRawData& fedRawData = fed_buffers->FEDData(fedId);
-    fedRawData = fed->second;
-    
+    fedRawData = *rawData;
+    delete rawData;
+
     if( _verbosity>0 )
       std::cout << "building FED header" << std::endl;
     FEDHeader hcalFEDHeader(fedRawData.data());
@@ -228,8 +206,6 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
 
   iEvent.put(fed_buffers);
   
-  std::cout << "check mate" << std::endl;
-
 }
 
 
@@ -237,11 +213,7 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
 void digi2rawTester::beginJob(){}
 
 // ------------ method called once each job just after ending the event loop  ------------
-void digi2rawTester::endJob(){
-
-  std::cout << "digi2rawTester::endJob" << std::endl;
-
-}
+void digi2rawTester::endJob(){}
 
 // ------------ method called when starting to processes a run  ------------
 void digi2rawTester::beginRun(edm::Run const&, edm::EventSetup const&){}

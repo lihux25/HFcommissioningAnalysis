@@ -188,6 +188,8 @@ private:
   int numChannels;
   string _outFileName;
   int _verbosity;
+  string _digiCollection;
+
 
   TQIE10Info _qie10Info;
 
@@ -216,17 +218,19 @@ private:
 //
 HFanalyzer::HFanalyzer(const edm::ParameterSet& iConfig) :
   _outFileName(iConfig.getUntrackedParameter<string>("OutFileName")),
-  _verbosity(iConfig.getUntrackedParameter<int>("Verbosity"))
+  _verbosity(iConfig.getUntrackedParameter<int>("Verbosity")),
+  _digiCollection(iConfig.getUntrackedParameter<string>("digiCollection"))
+  
 {
 
 
-  tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis"));
-  hf_token = consumes<HFDigiCollection>(edm::InputTag("hcalDigis"));
+  tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag(_digiCollection));
+  hf_token = consumes<HFDigiCollection>(edm::InputTag(_digiCollection));
 
   _file = new TFile(_outFileName.c_str(), "recreate");
-  _file->mkdir("QIE10Data");
+  _file->mkdir(_digiCollection.c_str());
 
-  _file->cd("QIE10Data");
+  _file->cd(_digiCollection.c_str());
   _treeQIE10 = new TTree("Events", "Events");
   _treeQIE10->Branch("numChs", &_qie10Info.numChs, "numChs/I");
   _treeQIE10->Branch("numTS", &_qie10Info.numTS, "numTS/I");
@@ -249,7 +253,7 @@ HFanalyzer::HFanalyzer(const edm::ParameterSet& iConfig) :
 HFanalyzer::~HFanalyzer()
 {
   
-  _file->cd();
+  _file->cd(_digiCollection.c_str());
 
   for( unsigned int j = 0 ; j < ADCspectrum.size() ; j++ ){
     ADCspectrum[j]->Write();
@@ -341,6 +345,9 @@ void HFanalyzer::getData(const edm::Event &iEvent,
   char histoName[100];
   unsigned int numQIE8channels = 0 ;
   if (qie8dc.isValid()){
+
+    std::cout << "qie8 data" << std::endl;
+
     for(HFDigiCollection::const_iterator qie8digi=qie8dc->begin();qie8digi!=qie8dc->end();qie8digi++){
       numQIE8channels++;
 
@@ -352,19 +359,19 @@ void HFanalyzer::getData(const edm::Event &iEvent,
       
       if( ADCspectrum.size() <= numQIE8channels ){
 	numChannels++;
-	sprintf(histoName,"ADCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	sprintf(histoName,"ADCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
 	ADCspectrum_QIE8.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
 	
-	sprintf(histoName,"Qspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	sprintf(histoName,"Qspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
 	Qspectrum_QIE8.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
 	
-	sprintf(histoName,"Qpulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	sprintf(histoName,"Qpulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
 	Qpulse_QIE8.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
 	
-	sprintf(histoName,"Pulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	sprintf(histoName,"Pulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
 	Pulse_QIE8.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
 	
-	sprintf(histoName,"CapIDvsBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+	sprintf(histoName,"CapIDvsBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
 	CapIDvsBX_QIE8.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,40,-0.5,3.5));
       }
       
@@ -417,7 +424,7 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 
 
   // --------------------------
-  // --   QIE8 Information  --
+  // --   QIE10 Information  --
   // --------------------------
   if (_verbosity>0){
       cout << "### Before Loop: " << endl;
@@ -437,40 +444,40 @@ void HFanalyzer::getData(const edm::Event &iEvent,
  
     if( ADCspectrum.size() <= j ){
       numChannels++;
-      sprintf(histoName,"ADCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"ADCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
       
-      sprintf(histoName,"Qspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"Qspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       Qspectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
 
-      sprintf(histoName,"TDCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"TDCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       TDCspectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
 
-      sprintf(histoName,"TDCtrailSpectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"TDCtrailSpectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       TDCtrailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
 
-      sprintf(histoName,"Qpulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"Qpulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
       
-      sprintf(histoName,"Pulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"Pulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       Pulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,256,-0.5,255.5));      
 
-      sprintf(histoName,"SOIplusBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"SOIplusBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       SOIplusBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,30,0.,100.));
 	
-      sprintf(histoName,"TDCtrailVsBx_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"TDCtrailVsBx_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       TDCtrailVsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,100));
       
-      sprintf(histoName,"TDCVsBx_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"TDCVsBx_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       TDCvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,63.5));      
 
-      sprintf(histoName,"PedVsCapID_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"PedVsCapID_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       PedVsCapID.push_back(new TH2F(histoName,histoName,40,-0.5,3.5,30,0.0,90.0));      
 
-      sprintf(histoName,"PulseEnergy1D_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"PulseEnergy1D_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       PulseEnergy1D.push_back(new TH1F(histoName,histoName,30,0.,100.));
 
-      sprintf(histoName,"CapIDvsBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,(depth-1)/2+1);
+      sprintf(histoName,"CapIDvsBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       CapIDvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,40,-0.5,3.5));
 
     }
