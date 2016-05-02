@@ -27,7 +27,7 @@ process.load("EventFilter.HcalRawToDigi.HcalRawToDigi_cfi")
 
 process.hcalAnalyzer = cms.EDAnalyzer('HFanalyzer',
                                       OutFileName = cms.untracked.string('HFanalysisTree_validation.root'),
-                                      Verbosity = cms.untracked.int32(10),
+                                      Verbosity = cms.untracked.int32(0),
                                       digiCollection = cms.untracked.string('hcalDigis')
 )
 
