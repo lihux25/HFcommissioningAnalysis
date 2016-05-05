@@ -346,8 +346,6 @@ void HFanalyzer::getData(const edm::Event &iEvent,
   unsigned int numQIE8channels = 0 ;
   if (qie8dc.isValid()){
 
-    std::cout << "qie8 data" << std::endl;
-
     for(HFDigiCollection::const_iterator qie8digi=qie8dc->begin();qie8digi!=qie8dc->end();qie8digi++){
       numQIE8channels++;
 
