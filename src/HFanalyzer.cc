@@ -160,22 +160,41 @@ private:
   virtual void analyze(const edm::Event&, const edm::EventSetup&);
   void getData(const edm::Event&, const edm::EventSetup&);
   virtual void endJob() ;
+  template <class HistoType> void writeHisto(vector<HistoType*> histos);
 
   TFile *_file;
   TTree *_treeQIE10;
 
   vector<TH1F*> ADCspectrum;		// 1D hist: ADC values
+  vector<TH1F*> ADC1spectrum;		// 1D hist: ADC values
+  vector<TH1F*> ADC2spectrum;		// 1D hist: ADC values
+  vector<TH1F*> ADC3spectrum;		// 1D hist: ADC values
+  vector<TH1F*> ADC4spectrum;		// 1D hist: ADC values
   vector<TH1F*> Qspectrum;      	// 1D hist: charge in fC
+  vector<TH1F*> Q1spectrum;      	// 1D hist: charge in fC
+  vector<TH1F*> Q2spectrum;      	// 1D hist: charge in fC
+  vector<TH1F*> Q3spectrum;      	// 1D hist: charge in fC
+  vector<TH1F*> Q4spectrum;      	// 1D hist: charge in fC
   vector<TH1F*> TDCspectrum;		// 1D hist: TDC leading edge
+  vector<TH1F*> TDC1spectrum;		// 1D hist: TDC leading edge
+  vector<TH1F*> TDC2spectrum;		// 1D hist: TDC leading edge
+  vector<TH1F*> TDC3spectrum;		// 1D hist: TDC leading edge
+  vector<TH1F*> TDC4spectrum;		// 1D hist: TDC leading edge
   vector<TH1F*> TDCtrailing;		// 1D hist: TDC trailing edge   
+  vector<TH1F*> TDC1trailing;		// 1D hist: TDC trailing edge   
+  vector<TH1F*> TDC2trailing;		// 1D hist: TDC trailing edge   
+  vector<TH1F*> TDC3trailing;		// 1D hist: TDC trailing edge   
+  vector<TH1F*> TDC4trailing;		// 1D hist: TDC trailing edge   
   vector<TH2F*> Pulse;			// 2D hist: charge (non converted) vs. time sample (BX)
   vector<TH2F*> Qpulse;			// 2D hist: charge vs. time sample (BX)
   vector<TH2F*> SOIplusBX;      	// 2D hist: charge of Sample of interest(SOI) vs. time sample (BX)
-  vector<TH1F*> PulseEnergy1D;          // 1D hist: charge of SOI + charge of next BX 
   vector<TH2F*> TDCvsBX;                // 2D hist: TDC leading edge vs. BX
   vector<TH2F*> TDCtrailVsBX;           // 2D hist: TDC trailing edge vs. BX
-  vector<TH2F*> PedVsCapID;   		// 2D hist: Pedestal vs. CapID
   vector<TH2F*> CapIDvsBX;
+  vector<TH2F*> TDC1vsADC1;
+  vector<TH2F*> TDC2vsADC2;
+  vector<TH2F*> TDC3vsADC3;
+  vector<TH2F*> TDC4vsADC4;
 
   // QIE8 
   vector<TH1F*> ADCspectrum_QIE8;		// 1D hist: ADC values
@@ -249,67 +268,53 @@ HFanalyzer::HFanalyzer(const edm::ParameterSet& iConfig) :
 
 }
 
+template <class HistoType> void HFanalyzer::writeHisto(vector<HistoType*> histos){
+  for( unsigned int j = 0 ; j < histos.size() ; j++ ){
+    histos[j]->Write();
+  }// end loop over ADCspectrum  
+}
 
 HFanalyzer::~HFanalyzer()
 {
   
   _file->cd(_digiCollection.c_str());
-
-  for( unsigned int j = 0 ; j < ADCspectrum.size() ; j++ ){
-    ADCspectrum[j]->Write();
-  }// end loop over ADCspectrum
-  for( unsigned int j = 0 ; j < Qspectrum.size() ; j++ ){    
-    Qspectrum[j]->Write();
-  }// end loop over Qspectrum
-  for( unsigned int j = 0 ; j < TDCspectrum.size() ; j++ ){    
-    TDCspectrum[j]->Write();
-  }// end loop over TDCspectrum
-  for ( unsigned int j = 0 ; j < TDCtrailing.size() ; j++ ){
-    TDCtrailing[j]->Write();
-  }//end loop over TDCtrailing
-  for( unsigned int j = 0 ; j < Pulse.size() ; j++ ){    
-    Pulse[j]->Write();
-  }// end loop over Pulse
-  for( unsigned int j = 0 ; j < Qpulse.size() ; j++ ){    
-    Qpulse[j]->Write();
-  }// end loop over Qpulse
-  for( unsigned int j = 0 ; j < SOIplusBX.size() ; j++ ){
-    SOIplusBX[j]->Write();
-  }// end loop over SOIplusBX  
-  for( unsigned int j = 0 ; j < PulseEnergy1D.size() ; j++ ){
-  PulseEnergy1D[j]->Write();
-  }// end loop over PulseEnergy 
-  for( unsigned int j = 0 ; j < TDCtrailVsBX.size() ; j++ ){
-    TDCtrailVsBX[j]->Write();
-  }// end loop over TDCtrailvsBX 
-  for( unsigned int j = 0 ; j < TDCvsBX.size() ; j++ ){    
-    TDCvsBX[j]->Write();
-  }// end loop over TDCvsBX
-  for( unsigned int j = 0 ; j < PedVsCapID.size() ; j++ ){    
-    PedVsCapID[j]->Write();
-  }// end loop over PedVsCapID
-  for( unsigned int j = 0 ; j < CapIDvsBX.size() ; j++ ){
-    CapIDvsBX[j]->Write();
-  }
-  //  for( unsigned int j = 0 ; j < QProfile.size() ; j++ ){
-  //    QProfile[j]->Write();
-  //  }// end loop over QProfile 
   
-  for( unsigned int j = 0 ; j < ADCspectrum_QIE8.size() ; j++ ){
-    ADCspectrum_QIE8[j]->Write();
-  }// end loop over ADCspectrum
-  for( unsigned int j = 0 ; j < Qspectrum_QIE8.size() ; j++ ){    
-    Qspectrum_QIE8[j]->Write();
-  }// end loop over Qspectrum
-  for( unsigned int j = 0 ; j < Pulse_QIE8.size() ; j++ ){    
-    Pulse_QIE8[j]->Write();
-  }// end loop over Pulse
-  for( unsigned int j = 0 ; j < Qpulse_QIE8.size() ; j++ ){    
-    Qpulse_QIE8[j]->Write();
-  }// end loop over Qpulse
-  for( unsigned int j = 0 ; j < CapIDvsBX_QIE8.size() ; j++ ){
-    CapIDvsBX_QIE8[j]->Write();
-  }
+  writeHisto(ADCspectrum);
+  writeHisto(ADC1spectrum);
+  writeHisto(ADC2spectrum);
+  writeHisto(ADC3spectrum);
+  writeHisto(ADC4spectrum);
+  writeHisto(Qspectrum);
+  writeHisto(Q1spectrum);  
+  writeHisto(Q2spectrum);
+  writeHisto(Q3spectrum);
+  writeHisto(Q4spectrum);
+  writeHisto(TDCspectrum);
+  writeHisto(TDC1spectrum);
+  writeHisto(TDC2spectrum);
+  writeHisto(TDC3spectrum);
+  writeHisto(TDC4spectrum);
+  writeHisto(TDCtrailing);
+  writeHisto(TDC1trailing);
+  writeHisto(TDC2trailing);
+  writeHisto(TDC3trailing);
+  writeHisto(TDC4trailing);
+  writeHisto(Pulse);
+  writeHisto(Qpulse);
+  writeHisto(SOIplusBX);
+  writeHisto(TDCtrailVsBX);
+  writeHisto(TDCvsBX);
+  writeHisto(CapIDvsBX);
+  writeHisto(TDC1vsADC1);
+  writeHisto(TDC2vsADC2);
+  writeHisto(TDC3vsADC3);
+  writeHisto(TDC4vsADC4);
+
+  writeHisto(ADCspectrum_QIE8);
+  writeHisto(Qspectrum_QIE8);
+  writeHisto(Pulse_QIE8);
+  writeHisto(Qpulse_QIE8);
+  writeHisto(CapIDvsBX_QIE8);
 
   _file->Write();
   _file->Close();
@@ -444,15 +449,47 @@ void HFanalyzer::getData(const edm::Event &iEvent,
       numChannels++;
       sprintf(histoName,"ADCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       ADCspectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
+      sprintf(histoName,"ADC1spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      ADC1spectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
+      sprintf(histoName,"ADC2spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      ADC2spectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
+      sprintf(histoName,"ADC3spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      ADC3spectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
+      sprintf(histoName,"ADC4spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      ADC4spectrum.push_back(new TH1F(histoName,histoName,256,-0.5,255.5));      
       
       sprintf(histoName,"Qspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       Qspectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
+      sprintf(histoName,"Q1spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      Q1spectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
+      sprintf(histoName,"Q2spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      Q2spectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
+      sprintf(histoName,"Q3spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      Q3spectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
+      sprintf(histoName,"Q4spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      Q4spectrum.push_back(new TH1F(histoName,histoName,100000,0.,350000.));      
 
       sprintf(histoName,"TDCspectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       TDCspectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
+      sprintf(histoName,"TDC1spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC1spectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
+      sprintf(histoName,"TDC2spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC2spectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
+      sprintf(histoName,"TDC3spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC3spectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
+      sprintf(histoName,"TDC4spectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC4spectrum.push_back(new TH1F(histoName,histoName,64,-0.5,63.5));      
 
       sprintf(histoName,"TDCtrailSpectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       TDCtrailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
+      sprintf(histoName,"TDC1trailSpectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC1trailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
+      sprintf(histoName,"TDC2trailSpectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC2trailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
+      sprintf(histoName,"TDC3trailSpectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC3trailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
+      sprintf(histoName,"TDC4trailSpectrum_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC4trailing.push_back(new TH1F(histoName,histoName,64,-0.5,100));
 
       sprintf(histoName,"Qpulse_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       Qpulse.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,100000,0.,350000.));      
@@ -469,14 +506,17 @@ void HFanalyzer::getData(const edm::Event &iEvent,
       sprintf(histoName,"TDCVsBx_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       TDCvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,64,-0.5,63.5));      
 
-      sprintf(histoName,"PedVsCapID_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
-      PedVsCapID.push_back(new TH2F(histoName,histoName,40,-0.5,3.5,30,0.0,90.0));      
-
-      sprintf(histoName,"PulseEnergy1D_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
-      PulseEnergy1D.push_back(new TH1F(histoName,histoName,30,0.,100.));
-
       sprintf(histoName,"CapIDvsBX_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
       CapIDvsBX.push_back(new TH2F(histoName,histoName,10,-0.5,9.5,40,-0.5,3.5));
+
+      sprintf(histoName,"TDC1vsADC1_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC1vsADC1.push_back(new TH2F(histoName,histoName,64,-0.5,63.5,256,-0.5,255.5));
+      sprintf(histoName,"TDC2vsADC2_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC2vsADC2.push_back(new TH2F(histoName,histoName,64,-0.5,63.5,256,-0.5,255.5));
+      sprintf(histoName,"TDC3vsADC3_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC3vsADC3.push_back(new TH2F(histoName,histoName,64,-0.5,63.5,256,-0.5,255.5));
+      sprintf(histoName,"TDC4vsADC4_iEta%i_iPhi%i_Depth%i",ieta,iphi,depth);
+      TDC4vsADC4.push_back(new TH2F(histoName,histoName,64,-0.5,63.5,256,-0.5,255.5));
 
     }
 
@@ -521,7 +561,6 @@ void HFanalyzer::getData(const edm::Event &iEvent,
         if (_qie10Info.soi[j][i] != 0){
 		float PulseEnergy = qie10df[i].adc() + qie10df[i+1].adc();
 		SOIplusBX[j]->Fill( i , PulseEnergy);
-                PulseEnergy1D[j]->Fill(PulseEnergy);
 		}
 	//Fill the histograms
 	ADCspectrum[j]->Fill( adc );
@@ -532,19 +571,35 @@ void HFanalyzer::getData(const edm::Event &iEvent,
 	Pulse[j]->Fill( i , adc );
         TDCtrailVsBX[j]->Fill( i , trail );
 	TDCvsBX[j]->Fill( i , tdc );
-	PedVsCapID[j]->Fill( capid , charge );
 	CapIDvsBX[j]->Fill ( i , capid );
-	//-------------------------------------------------
-	//--Create a profile for each "Qpulse" histogram --
-	//-------------------------------------------------
-	//	sprintf(QProfileName,"QProfile_%i)",j+1);
-	//        QProfile[j] = (TProfile*) Qpulse[j]->ProfileX( QProfileName, 1 , -1 , "s" );
-	//        QProfile[j]->GetYaxis()->SetTitle("Charge [fC]");
-	//        QProfile[j]->GetXaxis()->SetTitle("BX");
-	//        QProfile[j]->SetLineColor( i%4+1 );
-	//        QProfile[j]->SetMarkerColor( i%4+1 );
-	//        QProfile[j]->SetMarkerStyle( 8 );
-	//--------------------------------------------------
+	if( i == 0 ){
+	  ADC1spectrum[j]->Fill(adc);
+	  Q1spectrum[j]->Fill(charge);
+	  TDC1spectrum[j]->Fill(tdc);
+	  TDC1trailing[j]->Fill(trail);
+	  TDC1vsADC1[j]->Fill(tdc,adc);
+	}  
+	if( i == 1 ){
+	  ADC2spectrum[j]->Fill(adc);
+	  Q2spectrum[j]->Fill(charge);
+	  TDC2spectrum[j]->Fill(tdc);
+	  TDC2trailing[j]->Fill(trail);
+	  TDC2vsADC2[j]->Fill(tdc,adc);
+	}  
+	if( i == 2 ){
+	  ADC3spectrum[j]->Fill(adc);
+	  Q3spectrum[j]->Fill(charge);
+	  TDC3spectrum[j]->Fill(tdc);
+	  TDC3trailing[j]->Fill(trail);
+	  TDC3vsADC3[j]->Fill(tdc,adc);
+	}  
+	if( i == 3 ){
+	  ADC4spectrum[j]->Fill(adc);
+	  Q4spectrum[j]->Fill(charge);
+	  TDC4spectrum[j]->Fill(tdc);
+	  TDC4trailing[j]->Fill(trail);
+	  TDC4vsADC4[j]->Fill(tdc,adc);
+	}  
 
 	_qie10Info.pulse[j][i] = charge;
 	_qie10Info.pulse_adc[j][i] = adc;
