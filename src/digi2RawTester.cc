@@ -8,12 +8,7 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 
 #include "EventFilter/HcalRawToDigi/interface/HcalUHTRData.h"
-#include "EventFilter/HcalRawToDigi/interface/HcalDCCHeader.h"
-#include "EventFilter/HcalRawToDigi/interface/HcalUnpacker.h"
-#include "DataFormats/HcalDetId/interface/HcalOtherDetId.h"
 #include "DataFormats/HcalDigi/interface/HcalQIESample.h"
-#include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
-#include "DataFormats/HcalDetId/interface/HcalCalibDetId.h"
 
 #include "CondFormats/HcalObjects/interface/HcalElectronicsMap.h"
 
@@ -29,8 +24,6 @@
 #include "DataFormats/HcalDigi/interface/HcalDigiCollections.h"
 #include "CalibFormats/HcalObjects/interface/HcalDbService.h"
 #include "CalibFormats/HcalObjects/interface/HcalDbRecord.h"
-#include "CalibFormats/HcalObjects/interface/HcalCalibrations.h"
-#include "CalibFormats/HcalObjects/interface/HcalCoderDb.h"
 
 #include "PackerHelp.cc"
 
@@ -66,15 +59,11 @@ private:
   edm::Handle<QIE10DigiCollection> qie10DigiCollection;
   edm::EDGetTokenT<HcalDataFrameContainer<QIE11DataFrame> > tok_QIE11DigiCollection_;
   edm::Handle<QIE11DigiCollection> qie11DigiCollection;
-
-  /*
   edm::EDGetTokenT<HBHEDigiCollection> tok_HBHEDigiCollection_;
   edm::Handle<HBHEDigiCollection> hbheDigiCollection;
   edm::EDGetTokenT<HFDigiCollection> tok_HFDigiCollection_;
   edm::Handle<HFDigiCollection> hfDigiCollection;
-  edm::EDGetTokenT<HODigiCollection> tok_HODigiCollection_;
-  edm::Handle<HODigiCollection> hoDigiCollection;
-  */
+
 };
 
 digi2rawTester::digi2rawTester(const edm::ParameterSet& iConfig) :
@@ -84,11 +73,8 @@ digi2rawTester::digi2rawTester(const edm::ParameterSet& iConfig) :
   produces<FEDRawDataCollection>("");
   tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis"));
   tok_QIE11DigiCollection_ = consumes<HcalDataFrameContainer<QIE11DataFrame> >(edm::InputTag("hcalDigis"));
-  /*
   tok_HBHEDigiCollection_ = consumes<HBHEDigiCollection >(edm::InputTag("hcalDigis"));
   tok_HFDigiCollection_ = consumes<HFDigiCollection >(edm::InputTag("hcalDigis"));
-  tok_HODigiCollection_ = consumes<HODigiCollection >(edm::InputTag("hcalDigis"));
-  */
 }
 
 digi2rawTester::~digi2rawTester(){}
@@ -111,14 +97,11 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
   const QIE10DigiCollection& qie10dc=*(qie10DigiCollection);
   iEvent.getByToken(tok_QIE11DigiCollection_,qie11DigiCollection);
   const QIE11DigiCollection& qie11dc=*(qie11DigiCollection);
-  /*
   iEvent.getByToken(tok_HBHEDigiCollection_,hbheDigiCollection);
-  const HBHEDigiCollection& hbhedc=*(hbheDigiCollection);
+  const HBHEDigiCollection& qie8hbhedc=*(hbheDigiCollection);
   iEvent.getByToken(tok_HFDigiCollection_,hfDigiCollection);
-  const HFDigiCollection& hfdc=*(hfDigiCollection);
-  iEvent.getByToken(tok_HODigiCollection_,hoDigiCollection);
-  const QIE10DigiCollection& hodc=*(hoDigiCollection);
-  */
+  const HFDigiCollection& qie8hfdc=*(hfDigiCollection);
+
   /* QUESTION: what about dual FED readout? */
   /* QUESTION: what do I do if the number of 16-bit words
                are not divisible by 4? -- these need to
@@ -130,51 +113,139 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
   // QIE10 precision data
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  uHTRhelper<QIE10DataFrame> uhtrs_qie10;
+  uHTRpacker uhtrs_qie10;
   // loop over each digi and allocate memory for each
   for (unsigned int j=0; j < qie10dc.size(); j++){
-    QIE10DataFrame qie10df = static_cast<QIE10DataFrame>(qie10dc[j]);
-    if( ! uhtrs_qie10.exist(qie10df , *readoutMap ) ){
-      uhtrs_qie10.newUHTR( qie10df , *readoutMap );
+    QIE10DataFrame qiedf = static_cast<QIE10DataFrame>(qie10dc[j]);
+    DetId detid = qiedf.detid();
+    HcalElectronicsId eid(readoutMap->lookup(detid));
+    int crateId = eid.crateId();
+    int slotId = eid.slot();
+    int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
+
+    /*
+    //  Defining a custom index that will encode only
+    the information about the crate and slot of a 
+	given channel:   crate: bits 0-7
+	                 slot:  bits 8-12
+    */
+
+    if( ! uhtrs_qie10.exist( uhtrIndex ) ){
+      uhtrs_qie10.newUHTR( uhtrIndex );
     }
-    uhtrs_qie10.addChannel(qie10df,*readoutMap,_verbosity);
+    uhtrs_qie10.addChannel(uhtrIndex,qiedf,_verbosity);
   }
   // loop over each uHTR and format data
   for( UHTRMap::iterator uhtr = uhtrs_qie10.uhtrs.begin() ; uhtr != uhtrs_qie10.uhtrs.end() ; ++uhtr){
 
+    int crateId = uhtr->first&0xFF;
+    int slotId = uhtr->first&0xF00;
+
     uhtrs_qie10.finalizeHeadTail(&(uhtr->second),_verbosity);
-    int fedId = FEDNumbering::MINHCALuTCAFEDID + uhtrs_qie10.getCrate(uhtr->first); // get crateId
+    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId;
     if( fedMap.find(fedId) == fedMap.end() ){
       /* QUESTION: where should the orbit number come from? */
       fedMap[fedId] = new HCalFED(fedId);
     }
-    fedMap[fedId]->addUHTR(uhtr->second,uhtrs_qie10.getCrate(uhtr->first),uhtrs_qie10.getSlot(uhtr->first));
+    fedMap[fedId]->addUHTR(uhtr->second,crateId,slotId);
   }// end loop over uhtr containers
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
   // QIE11 precision data
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  uHTRhelper<QIE11DataFrame> uhtrs_qie11;
+  uHTRpacker uhtrs_qie11;
   // loop over each digi and allocate memory for each
   for (unsigned int j=0; j < qie11dc.size(); j++){
-    QIE11DataFrame qie11df = static_cast<QIE11DataFrame>(qie11dc[j]);
-    if( ! uhtrs_qie11.exist(qie11df , *readoutMap ) ){
-      uhtrs_qie11.newUHTR( qie11df , *readoutMap );
+    QIE11DataFrame qiedf = static_cast<QIE11DataFrame>(qie11dc[j]);
+    DetId detid = qiedf.detid();
+    HcalElectronicsId eid(readoutMap->lookup(detid));
+    int crateId = eid.crateId();
+    int slotId = eid.slot();
+    int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
+
+    if( ! uhtrs_qie11.exist(uhtrIndex) ){
+      uhtrs_qie11.newUHTR( uhtrIndex );
     }
-    uhtrs_qie11.addChannel(qie11df,*readoutMap,_verbosity);
+    uhtrs_qie11.addChannel(uhtrIndex,qiedf,_verbosity);
   }
   // loop over each uHTR and format data
   for( UHTRMap::iterator uhtr = uhtrs_qie11.uhtrs.begin() ; uhtr != uhtrs_qie11.uhtrs.end() ; ++uhtr){
 
+    int crateId = uhtr->first&0xFF;
+    int slotId = uhtr->first&0xF00;
+
     uhtrs_qie11.finalizeHeadTail(&(uhtr->second),_verbosity);
-    int fedId = FEDNumbering::MINHCALuTCAFEDID + uhtrs_qie11.getCrate(uhtr->first); // get crateId
+    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId ;
     if( fedMap.find(fedId) == fedMap.end() ){
       /* QUESTION: where should the orbit number come from? */
       fedMap[fedId] = new HCalFED(fedId);
     }
-    fedMap[fedId]->addUHTR(uhtr->second,uhtrs_qie11.getCrate(uhtr->first),uhtrs_qie11.getSlot(uhtr->first));
+    fedMap[fedId]->addUHTR(uhtr->second,crateId,slotId);
   }// end loop over uhtr containers
 
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  // HF (QIE8) precision data
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  uHTRpacker uhtrs_qie8HF;
+  // loop over each digi and allocate memory for each
+  for(HFDigiCollection::const_iterator qiedf=qie8hfdc.begin();qiedf!=qie8hfdc.end();qiedf++){
+    //HFDataFrame qiedf = static_cast<HFDataFrame>(qie8hfdc[j]);
+    HcalElectronicsId eid = qiedf->elecId();
+    int crateId = eid.crateId();
+    int slotId = eid.slot();
+    int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
+
+    if( ! uhtrs_qie8HF.exist(uhtrIndex) ){
+      uhtrs_qie8HF.newUHTR( uhtrIndex );
+    }
+    uhtrs_qie8HF.addChannel(uhtrIndex,qiedf,_verbosity);
+  }
+  // loop over each uHTR and format data
+  for( UHTRMap::iterator uhtr = uhtrs_qie8HF.uhtrs.begin() ; uhtr != uhtrs_qie8HF.uhtrs.end() ; ++uhtr){
+
+    int crateId = uhtr->first&0xFF;
+    int slotId = uhtr->first&0xF00;
+
+    uhtrs_qie8HF.finalizeHeadTail(&(uhtr->second),_verbosity);
+    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId ;
+    if( fedMap.find(fedId) == fedMap.end() ){
+      /* QUESTION: where should the orbit number come from? */
+      fedMap[fedId] = new HCalFED(fedId);
+    }
+    fedMap[fedId]->addUHTR(uhtr->second,crateId,slotId);
+  }// end loop over uhtr containers
+
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  // HBHE (QIE8) precision data
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  uHTRpacker uhtrs_qie8HBHE;
+  // loop over each digi and allocate memory for each
+  for(HBHEDigiCollection::const_iterator qiedf=qie8hbhedc.begin();qiedf!=qie8hbhedc.end();qiedf++){
+    //HFDataFrame qiedf = static_cast<HFDataFrame>(qie8hbhedc[j]);
+    HcalElectronicsId eid = qiedf->elecId();
+    int crateId = eid.crateId();
+    int slotId = eid.slot();
+    int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
+
+    if( ! uhtrs_qie8HBHE.exist(uhtrIndex) ){
+      uhtrs_qie8HBHE.newUHTR( uhtrIndex );
+    }
+    uhtrs_qie8HBHE.addChannel(uhtrIndex,qiedf,_verbosity);
+  }
+  // loop over each uHTR and format data
+  for( UHTRMap::iterator uhtr = uhtrs_qie8HBHE.uhtrs.begin() ; uhtr != uhtrs_qie8HBHE.uhtrs.end() ; ++uhtr){
+
+    int crateId = uhtr->first&0xFF;
+    int slotId = uhtr->first&0xF00;
+
+    uhtrs_qie8HBHE.finalizeHeadTail(&(uhtr->second),_verbosity);
+    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId ;
+    if( fedMap.find(fedId) == fedMap.end() ){
+      /* QUESTION: where should the orbit number come from? */
+      fedMap[fedId] = new HCalFED(fedId);
+    }
+    fedMap[fedId]->addUHTR(uhtr->second,crateId,slotId);
+  }// end loop over uhtr containers
   
   /* ------------------------------------------------------
      ------------------------------------------------------
