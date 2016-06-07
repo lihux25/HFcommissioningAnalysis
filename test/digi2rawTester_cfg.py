@@ -33,7 +33,7 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    )
 
 process.digi2raw = cms.EDProducer("digi2rawTester",
-                                  Verbosity = cms.untracked.int32(4)
+                                  Verbosity = cms.untracked.int32(0)
                                   )
 
 process.hcalDigi2rawDigi = cms.EDProducer("HcalRawToDigi",
