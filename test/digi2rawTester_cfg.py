@@ -3,7 +3,7 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process("digi2rawTesting")
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
-process.MessageLogger.cerr.FwkReport.reportEvery = 100
+process.MessageLogger.cerr.FwkReport.reportEvery = 1
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
@@ -28,11 +28,12 @@ process.hcalDigis = cms.EDProducer("HcalRawToDigi",
                                    #       UnpackCalib = cms.untracked.bool(True),
                                    FEDs = cms.untracked.vint32(932),
                                    firstSample = cms.int32(0),
-                                   lastSample = cms.int32(9)
+                                   lastSample = cms.int32(9),
+                                   silent = cms.untracked.bool(False)
                                    )
 
 process.digi2raw = cms.EDProducer("digi2rawTester",
-                                  Verbosity = cms.untracked.int32(0)
+                                  Verbosity = cms.untracked.int32(4)
                                   )
 
 process.hcalDigi2rawDigi = cms.EDProducer("HcalRawToDigi",

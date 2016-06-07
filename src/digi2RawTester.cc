@@ -32,6 +32,12 @@
 #include <sstream>
 #include <string>
 
+/* QUESTION: what about dual FED readout? */
+/* QUESTION: what do I do if the number of 16-bit words
+   are not divisible by 4? -- these need to
+   fit into the 64-bit words of the FEDRawDataFormat */
+
+
 using namespace std;
 
 class digi2rawTester : public edm::EDProducer {
@@ -63,6 +69,8 @@ private:
   edm::Handle<HBHEDigiCollection> hbheDigiCollection;
   edm::EDGetTokenT<HFDigiCollection> tok_HFDigiCollection_;
   edm::Handle<HFDigiCollection> hfDigiCollection;
+  edm::EDGetTokenT<HcalTrigPrimDigiCollection> tok_TPDigiCollection_;
+  edm::Handle<HcalTrigPrimDigiCollection> tpDigiCollection;
 
 };
 
@@ -74,12 +82,14 @@ digi2rawTester::digi2rawTester(const edm::ParameterSet& iConfig) :
   tok_QIE10DigiCollection_ = consumes<HcalDataFrameContainer<QIE10DataFrame> >(edm::InputTag("hcalDigis"));
   tok_QIE11DigiCollection_ = consumes<HcalDataFrameContainer<QIE11DataFrame> >(edm::InputTag("hcalDigis"));
   tok_HBHEDigiCollection_ = consumes<HBHEDigiCollection >(edm::InputTag("hcalDigis"));
-  tok_HFDigiCollection_ = consumes<HFDigiCollection >(edm::InputTag("hcalDigis"));
+  tok_HFDigiCollection_ = consumes<HFDigiCollection>(edm::InputTag("hcalDigis"));
+  tok_TPDigiCollection_ = consumes<HcalTrigPrimDigiCollection>(edm::InputTag("hcalDigis"));
 }
 
 digi2rawTester::~digi2rawTester(){}
 
 void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
+
   using namespace edm;
 
   edm::ESHandle<HcalDbService> pSetup;
@@ -101,11 +111,8 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
   const HBHEDigiCollection& qie8hbhedc=*(hbheDigiCollection);
   iEvent.getByToken(tok_HFDigiCollection_,hfDigiCollection);
   const HFDigiCollection& qie8hfdc=*(hfDigiCollection);
-
-  /* QUESTION: what about dual FED readout? */
-  /* QUESTION: what do I do if the number of 16-bit words
-               are not divisible by 4? -- these need to
-	       fit into the 64-bit words of the FEDRawDataFormat */
+  iEvent.getByToken(tok_TPDigiCollection_,tpDigiCollection);
+  const HcalTrigPrimDigiCollection& qietpdc=*(tpDigiCollection);
 
   // first argument is the fedid (minFEDID+crateId)
   map<int,HCalFED*> fedMap;
@@ -113,47 +120,32 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
   // QIE10 precision data
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  uHTRpacker uhtrs_qie10;
+  uHTRpacker uhtrs;
   // loop over each digi and allocate memory for each
+
   for (unsigned int j=0; j < qie10dc.size(); j++){
     QIE10DataFrame qiedf = static_cast<QIE10DataFrame>(qie10dc[j]);
     DetId detid = qiedf.detid();
     HcalElectronicsId eid(readoutMap->lookup(detid));
     int crateId = eid.crateId();
     int slotId = eid.slot();
-    int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
+    int uhtrIndex = ((slotId&0xF)<<8) | (crateId&0xFF);
 
-    /*
-    //  Defining a custom index that will encode only
-    the information about the crate and slot of a 
-	given channel:   crate: bits 0-7
-	                 slot:  bits 8-12
-    */
+    /* Defining a custom index that will encode only
+       the information about the crate and slot of a 
+       given channel:   crate: bits 0-7
+                        slot:  bits 8-12 */
 
-    if( ! uhtrs_qie10.exist( uhtrIndex ) ){
-      uhtrs_qie10.newUHTR( uhtrIndex );
+    if( ! uhtrs.exist( uhtrIndex ) ){
+      uhtrs.newUHTR( uhtrIndex );
     }
-    uhtrs_qie10.addChannel(uhtrIndex,qiedf,_verbosity);
+    uhtrs.addChannel(uhtrIndex,qiedf,_verbosity);
   }
-  // loop over each uHTR and format data
-  for( UHTRMap::iterator uhtr = uhtrs_qie10.uhtrs.begin() ; uhtr != uhtrs_qie10.uhtrs.end() ; ++uhtr){
-
-    int crateId = uhtr->first&0xFF;
-    int slotId = uhtr->first&0xF00;
-
-    uhtrs_qie10.finalizeHeadTail(&(uhtr->second),_verbosity);
-    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId;
-    if( fedMap.find(fedId) == fedMap.end() ){
-      /* QUESTION: where should the orbit number come from? */
-      fedMap[fedId] = new HCalFED(fedId);
-    }
-    fedMap[fedId]->addUHTR(uhtr->second,crateId,slotId);
-  }// end loop over uhtr containers
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
   // QIE11 precision data
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  uHTRpacker uhtrs_qie11;
+  //uHTRpacker uhtrs;
   // loop over each digi and allocate memory for each
   for (unsigned int j=0; j < qie11dc.size(); j++){
     QIE11DataFrame qiedf = static_cast<QIE11DataFrame>(qie11dc[j]);
@@ -161,32 +153,17 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
     HcalElectronicsId eid(readoutMap->lookup(detid));
     int crateId = eid.crateId();
     int slotId = eid.slot();
-    int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
+    int uhtrIndex = ((slotId&0xF)<<8) | (crateId&0xFF);
 
-    if( ! uhtrs_qie11.exist(uhtrIndex) ){
-      uhtrs_qie11.newUHTR( uhtrIndex );
+    if( ! uhtrs.exist(uhtrIndex) ){
+      uhtrs.newUHTR( uhtrIndex );
     }
-    uhtrs_qie11.addChannel(uhtrIndex,qiedf,_verbosity);
+    uhtrs.addChannel(uhtrIndex,qiedf,_verbosity);
   }
-  // loop over each uHTR and format data
-  for( UHTRMap::iterator uhtr = uhtrs_qie11.uhtrs.begin() ; uhtr != uhtrs_qie11.uhtrs.end() ; ++uhtr){
-
-    int crateId = uhtr->first&0xFF;
-    int slotId = uhtr->first&0xF00;
-
-    uhtrs_qie11.finalizeHeadTail(&(uhtr->second),_verbosity);
-    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId ;
-    if( fedMap.find(fedId) == fedMap.end() ){
-      /* QUESTION: where should the orbit number come from? */
-      fedMap[fedId] = new HCalFED(fedId);
-    }
-    fedMap[fedId]->addUHTR(uhtr->second,crateId,slotId);
-  }// end loop over uhtr containers
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
   // HF (QIE8) precision data
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  uHTRpacker uhtrs_qie8HF;
   // loop over each digi and allocate memory for each
   for(HFDigiCollection::const_iterator qiedf=qie8hfdc.begin();qiedf!=qie8hfdc.end();qiedf++){
     //HFDataFrame qiedf = static_cast<HFDataFrame>(qie8hfdc[j]);
@@ -195,30 +172,15 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
     int slotId = eid.slot();
     int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
 
-    if( ! uhtrs_qie8HF.exist(uhtrIndex) ){
-      uhtrs_qie8HF.newUHTR( uhtrIndex );
+    if( ! uhtrs.exist(uhtrIndex) ){
+      uhtrs.newUHTR( uhtrIndex );
     }
-    uhtrs_qie8HF.addChannel(uhtrIndex,qiedf,_verbosity);
+    uhtrs.addChannel(uhtrIndex,qiedf,_verbosity);
   }
-  // loop over each uHTR and format data
-  for( UHTRMap::iterator uhtr = uhtrs_qie8HF.uhtrs.begin() ; uhtr != uhtrs_qie8HF.uhtrs.end() ; ++uhtr){
-
-    int crateId = uhtr->first&0xFF;
-    int slotId = uhtr->first&0xF00;
-
-    uhtrs_qie8HF.finalizeHeadTail(&(uhtr->second),_verbosity);
-    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId ;
-    if( fedMap.find(fedId) == fedMap.end() ){
-      /* QUESTION: where should the orbit number come from? */
-      fedMap[fedId] = new HCalFED(fedId);
-    }
-    fedMap[fedId]->addUHTR(uhtr->second,crateId,slotId);
-  }// end loop over uhtr containers
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
   // HBHE (QIE8) precision data
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  uHTRpacker uhtrs_qie8HBHE;
   // loop over each digi and allocate memory for each
   for(HBHEDigiCollection::const_iterator qiedf=qie8hbhedc.begin();qiedf!=qie8hbhedc.end();qiedf++){
     //HFDataFrame qiedf = static_cast<HFDataFrame>(qie8hbhedc[j]);
@@ -227,26 +189,59 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
     int slotId = eid.slot();
     int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
 
-    if( ! uhtrs_qie8HBHE.exist(uhtrIndex) ){
-      uhtrs_qie8HBHE.newUHTR( uhtrIndex );
+    if( ! uhtrs.exist(uhtrIndex) ){
+      uhtrs.newUHTR( uhtrIndex );
     }
-    uhtrs_qie8HBHE.addChannel(uhtrIndex,qiedf,_verbosity);
+    uhtrs.addChannel(uhtrIndex,qiedf,_verbosity);
   }
+
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  // TP data
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  // loop over each digi and allocate memory for each
+
+  // --- I left off here ... need to specify and include the correct digi collection ---
+
+  for(HcalTrigPrimDigiCollection::const_iterator qiedf=qietpdc.begin();qiedf!=qietpdc.end();qiedf++){
+    //HFDataFrame qiedf = static_cast<HFDataFrame>(qie8hbhedc[j]);
+    HcalElectronicsId eid(qiedf->id().rawId());
+    
+    int crateId = eid.crateId();
+    int slotId = eid.slot();
+    int uhtrIndex = (crateId&0xFF) | ((slotId&0xF)<<8) ; 
+
+    if( ! uhtrs.exist(uhtrIndex) ){
+      uhtrs.newUHTR( uhtrIndex );
+    }
+    uhtrs.addChannel(uhtrIndex,qiedf,_verbosity);
+  }
+
+  // -----------------------------------------------------
+  // -----------------------------------------------------
   // loop over each uHTR and format data
-  for( UHTRMap::iterator uhtr = uhtrs_qie8HBHE.uhtrs.begin() ; uhtr != uhtrs_qie8HBHE.uhtrs.end() ; ++uhtr){
+  // -----------------------------------------------------
+  // -----------------------------------------------------
+  // loop over each uHTR and format data
+  for( UHTRMap::iterator uhtr = uhtrs.uhtrs.begin() ; uhtr != uhtrs.uhtrs.end() ; ++uhtr){
 
-    int crateId = uhtr->first&0xFF;
-    int slotId = uhtr->first&0xF00;
+    uint64_t crateId = (uhtr->first)&0xFF;
+    uint64_t slotId =  (uhtr->first&0xF00)>>8;
 
-    uhtrs_qie8HBHE.finalizeHeadTail(&(uhtr->second),_verbosity);
-    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId ;
+    if( _verbosity > 2 ){
+      cout << "uHTR index: " << uhtr->first << endl;
+      cout << "CRATE ID : " << crateId << endl;
+      cout << "SLOT ID : " << slotId << endl;
+    }
+
+    uhtrs.finalizeHeadTail(&(uhtr->second),_verbosity);
+    int fedId = FEDNumbering::MINHCALuTCAFEDID + crateId;
     if( fedMap.find(fedId) == fedMap.end() ){
       /* QUESTION: where should the orbit number come from? */
-      fedMap[fedId] = new HCalFED(fedId);
+      fedMap[fedId] = new HCalFED(fedId,iEvent.id().event());
     }
     fedMap[fedId]->addUHTR(uhtr->second,crateId,slotId);
   }// end loop over uhtr containers
-  
+
   /* ------------------------------------------------------
      ------------------------------------------------------
            putting together the FEDRawDataCollection
@@ -264,7 +259,7 @@ void digi2rawTester::produce(edm::Event& iEvent, const edm::EventSetup& iSetup){
     if( _verbosity>0 )
       std::cout << "building FED header" << std::endl;
     FEDHeader hcalFEDHeader(fedRawData.data());
-    hcalFEDHeader.set(fedRawData.data(), 0, iEvent.id().event(), 0, fedId);
+    hcalFEDHeader.set(fedRawData.data(), 1, iEvent.id().event(), 1, fedId);
     if( _verbosity>0 )
       std::cout << "building FED trailer" << std::endl;
     FEDTrailer hcalFEDTrailer(fedRawData.data()+(fedRawData.size()-8));
