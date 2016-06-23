@@ -186,7 +186,7 @@ public:
       return NULL ;
     }
 
-    cdfHeader = 0 ;
+//    cdfHeader = 0 ;
     // put common data format header in fed container
     fedData.push_back((cdfHeader>>0 )&0xFF);
     fedData.push_back((cdfHeader>>8 )&0xFF);
@@ -410,7 +410,11 @@ public:
   void addChannel( int uhtrIndex , QIE10DataFrame qiedf , int verbosity = 0 ){ 
     // loop over words in dataframe 
     for(edm::DataFrame::iterator dfi=qiedf.begin() ; dfi!=qiedf.end(); ++dfi){      
-      if(dfi == qiedf.begin()) ++dfi; // hack to prevent double channel header
+//      if(dfi == qiedf.begin()) ++dfi; // hack to prevent double channel header
+      if( dfi != qiedf.begin() && (((*dfi)&0x8000) !=0) ){
+         if(verbosity>=3) std::cout<<"   skipping "<<std::endl; // this is to prevent double channel header but skipping the last ones
+         continue;
+      }
       if(verbosity>5) printf("raw from digi: %04X \n",dfi[0]);
       // push data into uhtr data container
       uhtrs[uhtrIndex].push_back(dfi[0]);
